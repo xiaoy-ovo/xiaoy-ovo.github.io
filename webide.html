@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebIDE - AI Powered Code Editor</title>
+<style>
+/* ============ CSS Variables & Reset ============ */
+:root {
+  --bg: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d30;
+  --border: #3e3e42;
+  --text: #cccccc;
+  --text-muted: #858585;
+  --text-bright: #e0e0e0;
+  --accent: #007acc;
+  --accent-hover: #1a8ad4;
+  --accent-bg: #094771;
+  --green: #4ec9b0;
+  --yellow: #dcdcaa;
+  --orange: #ce9178;
+  --red: #f44747;
+  --blue: #569cd6;
+  --purple: #c586c0;
+  --sidebar-width: 260px;
+  --statusbar-height: 24px;
+  --tabs-height: 36px;
+  --panel-height: 200px;
+  --font-mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, 'Courier New', monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --shadow: 0 4px 12px rgba(0,0,0,0.4);
+  --radius: 6px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  display: flex; flex-direction: column;
+  user-select: none;
+}
+
+/* ============ Title Bar ============ */
+.titlebar {
+  height: 32px; background: #323233;
+  display: flex; align-items: center; padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+  font-size: 13px; color: var(--text-muted);
+  gap: 8px;
+  flex-shrink: 0;
+}
+.titlebar .logo { color: var(--accent); font-weight: 700; font-size: 14px; letter-spacing: 0.5px; }
+.titlebar .logo span { color: var(--text); font-weight: 400; }
+.titlebar .dot { width: 10px; height: 10px; border-radius: 50%; }
+.titlebar .dot.g { background: #4ec9b0; }
+.titlebar .dot.y { background: #dcdcaa; }
+.titlebar .dot.r { background: #f44747; }
+
+/* ============ Main Layout ============ */
+.main-container { display: flex; flex: 1; overflow: hidden; }
+
+/* ============ Sidebar ============ */
+.sidebar {
+  width: var(--sidebar-width); min-width: 180px;
+  background: var(--bg-secondary); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+  flex-shrink: 0;
+}
+.sidebar-header {
+  padding: 10px 14px; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-muted); font-weight: 600;
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-header .actions { display: flex; gap: 4px; }
+.sidebar-header .actions button {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 3px;
+  line-height: 1;
+}
+.sidebar-header .actions button:hover { color: var(--text-bright); background: var(--bg-tertiary); }
+.file-tree {
+  flex: 1; overflow-y: auto; padding: 4px 0;
+  font-size: 13px; font-family: var(--font-ui);
+}
+.file-tree::-webkit-scrollbar { width: 6px; }
+.file-tree::-webkit-scrollbar-thumb { background: #424242; border-radius: 3px; }
+.file-tree::-webkit-scrollbar-track { background: transparent; }
+
+.file-item {
+  display: flex; align-items: center; padding: 4px 14px; cursor: pointer;
+  gap: 6px; transition: background 0.1s; white-space: nowrap;
+}
+.file-item:hover { background: #2a2d2e; }
+.file-item.active { background: var(--accent-bg); }
+.file-item .icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+.file-item .name { overflow: hidden; text-overflow: ellipsis; }
+.file-item .lang-badge {
+  font-size: 9px; padding: 1px 5px; border-radius: 3px;
+  background: var(--bg-tertiary); color: var(--text-muted);
+  margin-left: auto; flex-shrink: 0;
+}
+
+.folder-item {
+  display: flex; align-items: center; padding: 4px 14px; cursor: pointer;
+  gap: 6px; font-size: 13px; transition: background 0.1s;
+}
+.folder-item:hover { background: #2a2d2e; }
+.folder-item .arrow { font-size: 10px; width: 14px; text-align: center; transition: transform 0.15s; }
+.folder-item.expanded .arrow { transform: rotate(90deg); }
+.folder-children { overflow: hidden; }
+.folder-children .file-item { padding-left: 32px; }
+.folder-children .folder-item { padding-left: 20px; }
+.folder-children .folder-children .file-item { padding-left: 48px; }
+
+/* ============ Editor Area ============ */
+.editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.tabs-bar {
+  height: var(--tabs-height); background: var(--bg-secondary);
+  display: flex; align-items: stretch; overflow-x: auto;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.tabs-bar::-webkit-scrollbar { height: 3px; }
+.tabs-bar::-webkit-scrollbar-thumb { background: #424242; }
+
+.tab {
+  display: flex; align-items: center; padding: 0 14px; gap: 8px;
+  font-size: 13px; cursor: pointer; border-right: 1px solid var(--border);
+  background: var(--bg-tertiary); color: var(--text-muted);
+  white-space: nowrap; min-width: 0; position: relative;
+  transition: background 0.1s;
+}
+.tab.active { background: var(--bg); color: var(--text-bright); }
+.tab:hover { background: #2a2a2a; }
+.tab.dirty .name::after { content: ' ●'; color: var(--text-muted); font-size: 10px; }
+.tab .close {
+  font-size: 14px; width: 18px; height: 18px; display: flex;
+  align-items: center; justify-content: center; border-radius: 3px;
+  flex-shrink: 0; margin-left: 2px;
+}
+.tab .close:hover { background: #555; color: #fff; }
+
+.editor-container { flex: 1; overflow: hidden; position: relative; }
+
+/* Ghost completion hint */
+.ghost-completion {
+  position: absolute; pointer-events: none;
+  color: rgba(255,255,255,0.3); font-family: var(--font-mono);
+  white-space: pre; z-index: 10; display: none;
+}
+
+/* ============ Bottom Panel ============ */
+.panel-resize {
+  height: 3px; background: var(--border); cursor: ns-resize; flex-shrink: 0;
+  transition: background 0.15s;
+}
+.panel-resize:hover { background: var(--accent); }
+
+.bottom-panel {
+  height: var(--panel-height); min-height: 60px;
+  background: var(--bg-secondary); border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.panel-tabs {
+  display: flex; background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border);
+}
+.panel-tab {
+  padding: 6px 16px; font-size: 12px; cursor: pointer;
+  border-right: 1px solid var(--border); color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.panel-tab.active { color: var(--text-bright); background: var(--bg-secondary); }
+.panel-tab:hover:not(.active) { color: var(--text); }
+
+.panel-content {
+  flex: 1; overflow-y: auto; padding: 10px 14px;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.5;
+  white-space: pre-wrap; color: var(--text);
+}
+.panel-content .info { color: var(--blue); }
+.panel-content .warn { color: var(--yellow); }
+.panel-content .error { color: var(--red); }
+.panel-content .success { color: var(--green); }
+.panel-content .token-info { color: var(--purple); }
+.panel-content::-webkit-scrollbar { width: 6px; }
+.panel-content::-webkit-scrollbar-thumb { background: #424242; }
+
+/* ============ Status Bar ============ */
+.statusbar {
+  height: var(--statusbar-height); background: var(--accent);
+  display: flex; align-items: center; padding: 0 12px; gap: 16px;
+  font-size: 12px; flex-shrink: 0;
+}
+.statusbar .item { display: flex; align-items: center; gap: 4px; }
+.statusbar .item.clickable { cursor: pointer; padding: 2px 6px; border-radius: 2px; }
+.statusbar .item.clickable:hover { background: rgba(255,255,255,0.15); }
+.statusbar .separator { color: rgba(255,255,255,0.3); }
+.statusbar .token-badge {
+  background: rgba(255,255,255,0.2); padding: 1px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 500;
+}
+
+/* ============ AI Settings Modal ============ */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; display: none;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px; width: 500px;
+  box-shadow: var(--shadow);
+}
+.modal h2 { font-size: 18px; margin-bottom: 20px; color: var(--text-bright); }
+.modal label {
+  display: block; font-size: 12px; color: var(--text-muted);
+  margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.modal input, .modal select, .modal textarea {
+  width: 100%; padding: 8px 12px; margin-bottom: 14px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text-bright); font-size: 13px;
+  font-family: var(--font-mono); outline: none;
+  transition: border-color 0.15s;
+}
+.modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--accent); }
+.modal textarea { resize: vertical; min-height: 60px; }
+.modal .btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.modal select { font-family: var(--font-ui); }
+
+.btn {
+  padding: 8px 20px; border-radius: 4px; font-size: 13px; cursor: pointer;
+  border: none; font-weight: 500; transition: background 0.15s;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary { background: var(--bg-tertiary); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: #3a3a3d; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { opacity: 0.85; }
+.btn-small {
+  padding: 4px 10px; font-size: 11px; border-radius: 3px;
+  background: var(--bg-tertiary); color: var(--text); border: 1px solid var(--border);
+  cursor: pointer;
+}
+.btn-small:hover { background: #3a3a3d; }
+.btn-small.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+
+/* ============ Toast ============ */
+.toast {
+  position: fixed; bottom: 40px; right: 20px;
+  padding: 10px 20px; background: var(--bg-tertiary); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  font-size: 13px; z-index: 2000; opacity: 0; transform: translateY(10px);
+  transition: all 0.25s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { border-color: var(--green); }
+.toast.error { border-color: var(--red); }
+
+/* ============ Run Preview iframe ============ */
+.preview-iframe {
+  width: 100%; height: 100%; border: none; background: #fff; display: none;
+}
+
+/* ============ Resize Handle ============ */
+.resize-handle {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: 4px; cursor: col-resize; z-index: 5;
+}
+.resize-handle:hover, .resize-handle.active { background: var(--accent); }
+
+/* ============ Settings cog in status bar ============ */
+.ai-indicator {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 8px; border-radius: 10px; font-size: 11px;
+}
+.ai-indicator.on { background: rgba(76, 201, 176, 0.3); color: var(--green); }
+.ai-indicator.off { background: rgba(255,255,255,0.1); color: var(--text-muted); }
+.ai-indicator.loading { background: rgba(220, 220, 170, 0.3); color: var(--yellow); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* Context menu */
+.context-menu {
+  position: fixed; z-index: 1500; background: var(--bg-secondary);
+  border: 1px solid var(--border); border-radius: 4px;
+  box-shadow: var(--shadow); padding: 4px 0; min-width: 160px;
+  display: none; font-size: 13px;
+}
+.context-menu.show { display: block; }
+.context-menu .menu-item {
+  padding: 6px 16px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+}
+.context-menu .menu-item:hover { background: var(--accent-bg); }
+.context-menu .menu-divider { height: 1px; background: var(--border); margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<!-- Title Bar -->
+<div class="titlebar">
+  <span class="dot g"></span><span class="dot y"></span><span class="dot r"></span>
+  <span class="logo">Web<span>IDE</span></span>
+  <span style="flex:1"></span>
+  <span style="font-size:12px">AI-Powered Code Editor</span>
+</div>
+
+<!-- Main Container -->
+<div class="main-container">
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span>📁 Explorer</span>
+      <div class="actions">
+        <button onclick="createFile()" title="New File">＋</button>
+        <button onclick="createFolder()" title="New Folder">📂</button>
+        <button onclick="refreshFileTree()" title="Refresh">↻</button>
+      </div>
+    </div>
+    <div class="file-tree" id="fileTree"></div>
+  </div>
+
+  <!-- Resize Handle -->
+  <div class="resize-handle" id="sidebarResize"></div>
+
+  <!-- Editor Area -->
+  <div class="editor-area">
+    <div class="tabs-bar" id="tabsBar"></div>
+    <div class="editor-container" id="editorContainer">
+      <div class="ghost-completion" id="ghostCompletion"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Panel Resize -->
+<div class="panel-resize" id="panelResize"></div>
+
+<!-- Bottom Panel -->
+<div class="bottom-panel" id="bottomPanel">
+  <div class="panel-tabs">
+    <div class="panel-tab active" data-panel="output" onclick="switchPanel('output')">📤 Output</div>
+    <div class="panel-tab" data-panel="problems" onclick="switchPanel('problems')">⚠️ Problems</div>
+    <div class="panel-tab" data-panel="tokens" onclick="switchPanel('tokens')">📊 Token Usage</div>
+    <div class="panel-tab" data-panel="preview" onclick="switchPanel('preview')">🌐 Preview</div>
+  </div>
+  <div class="panel-content" id="panelOutput"></div>
+  <iframe class="preview-iframe" id="previewFrame" sandbox="allow-scripts allow-modals"></iframe>
+</div>
+
+<!-- Status Bar -->
+<div class="statusbar">
+  <span class="item" style="cursor:pointer" onclick="openAISettings()" title="AI Settings">
+    ⚡ <span id="aiStatus">AI: Not Configured</span>
+  </span>
+  <span class="separator">|</span>
+  <span class="item" id="cursorPos">Ln 1, Col 1</span>
+  <span class="separator">|</span>
+  <span class="item" id="langLabel">Plain Text</span>
+  <span class="separator">|</span>
+  <span class="item token-badge" id="tokenBadge" style="display:none">🪙 0 tokens</span>
+  <span class="separator">|</span>
+  <span class="item clickable" onclick="toggleAIAutoComplete()">
+    <span class="ai-indicator off" id="aiIndicator">AI Auto: OFF</span>
+  </span>
+  <span style="flex:1"></span>
+  <span class="item clickable" onclick="runCode()" title="Run (Ctrl+Enter)">▶ Run</span>
+  <span class="item clickable" onclick="formatCode()" title="Format">{} Format</span>
+</div>
+
+<!-- AI Settings Modal -->
+<div class="modal-overlay" id="aiSettingsModal">
+  <div class="modal">
+    <h2>⚡ AI Completion Settings</h2>
+    <label>API Provider</label>
+    <select id="aiProvider" onchange="handleProviderChange()">
+      <option value="openai">OpenAI</option>
+      <option value="deepseek">DeepSeek (Recommended - Cheap)</option>
+      <option value="custom">Custom Compatible API</option>
+    </select>
+    <label>API Key</label>
+    <input type="password" id="aiApiKey" placeholder="sk-..." autocomplete="off">
+    <label>API Endpoint URL</label>
+    <input type="text" id="aiEndpoint" placeholder="https://api.openai.com/v1/chat/completions">
+    <label>Model Name</label>
+    <input type="text" id="aiModel" placeholder="gpt-4o-mini">
+    <label>System Prompt (controls completion style)</label>
+    <textarea id="aiSystemPrompt" placeholder="You are a code completion assistant. Complete the code concisely."></textarea>
+    <label>
+      Max Output Tokens
+      <input type="number" id="aiMaxTokens" value="80" min="10" max="500" style="width:100px;display:inline;margin-left:8px">
+    </label>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeAISettings()">Cancel</button>
+      <button class="btn btn-danger" onclick="clearAISettings()">Clear Config</button>
+      <button class="btn btn-primary" onclick="saveAISettings()">💾 Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ============ SCRIPTS ============ -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js">
+</script>
+<script>
+// ===================== GLOBAL STATE =====================
+const STATE = {
+  files: {},
+  folders: new Set(),
+  openTabs: [],
+  activeFile: null,
+  activePanel: 'output',
+  ai: {
+    enabled: false,
+    provider: 'deepseek',
+    apiKey: '',
+    endpoint: 'https://api.deepseek.com/v1/chat/completions',
+    model: 'deepseek-chat',
+    systemPrompt: 'You are a code completion engine. Return ONLY the completion code, no explanations, no markdown. Complete the code at the cursor position naturally.',
+    maxTokens: 80,
+  },
+  tokenUsage: { total: 0, requests: 0 },
+  completionsCache: new Map(),
+};
+
+// Load state from localStorage
+function loadState() {
+  try {
+    const saved = localStorage.getItem('webide_state_v2');
+    if (saved) {
+      const s = JSON.parse(saved);
+      if (s.files) STATE.files = s.files;
+      if (s.folders) STATE.folders = new Set(s.folders);
+      if (s.ai) Object.assign(STATE.ai, s.ai);
+      if (s.tokenUsage) STATE.tokenUsage = s.tokenUsage;
+    }
+  } catch(e) { console.warn('Failed to load state:', e); }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('webide_state_v2', JSON.stringify({
+      files: STATE.files,
+      folders: Array.from(STATE.folders),
+      ai: STATE.ai,
+      tokenUsage: STATE.tokenUsage,
+    }));
+  } catch(e) { console.warn('Failed to save state:', e); }
+}
+
+// ===================== MONACO EDITOR SETUP =====================
+let editor = null;
+let monaco = null;
+
+self.MonacoEnvironment = {
+  getWorkerUrl: function(moduleId, label) {
+    const base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs';
+    if (label === 'json') return base + '/language/json/json.worker.js';
+    if (label === 'css' || label === 'scss' || label === 'less') return base + '/language/css/css.worker.js';
+    if (label === 'html' || label === 'handlebars' || label === 'razor') return base + '/language/html/html.worker.js';
+    if (label === 'typescript' || label === 'javascript') return base + '/language/typescript/ts.worker.js';
+    return base + '/editor/editor.worker.js';
+  }
+};
+
+// Language mapping
+const LANG_MAP = {
+  'html': 'html', 'htm': 'html',
+  'css': 'css', 'scss': 'scss', 'less': 'less',
+  'js': 'javascript', 'jsx': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript',
+  'ts': 'typescript', 'tsx': 'typescript',
+  'json': 'json', 'jsonc': 'json',
+  'py': 'python',
+  'rb': 'ruby',
+  'java': 'java',
+  'kt': 'kotlin', 'kts': 'kotlin',
+  'swift': 'swift',
+  'c': 'c', 'h': 'c',
+  'cpp': 'cpp', 'cc': 'cpp', 'cxx': 'cpp', 'hpp': 'cpp',
+  'cs': 'csharp',
+  'go': 'go',
+  'rs': 'rust',
+  'php': 'php',
+  'sql': 'sql',
+  'sh': 'shell', 'bash': 'shell', 'zsh': 'shell', 'ps1': 'powershell',
+  'md': 'markdown', 'mdx': 'markdown',
+  'yaml': 'yaml', 'yml': 'yaml',
+  'xml': 'xml', 'svg': 'xml',
+  'toml': 'plaintext',
+  'ini': 'ini', 'cfg': 'ini',
+  'dockerfile': 'dockerfile',
+  'txt': 'plaintext',
+};
+
+function getLanguage(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  if (filename.toLowerCase() === 'dockerfile') return 'dockerfile';
+  return LANG_MAP[ext] || 'plaintext';
+}
+
+function getFileIcon(filename) {
+  const lang = getLanguage(filename);
+  const icons = {
+    'html': '🌐', 'css': '🎨', 'scss': '🎨', 'less': '🎨',
+    'javascript': '📜', 'typescript': '📘',
+    'python': '🐍', 'ruby': '💎', 'java': '☕', 'kotlin': '🎯',
+    'swift': '🦅', 'c': '⚙️', 'cpp': '⚙️',
+    'csharp': '🔷', 'go': '🔵', 'rust': '🦀',
+    'php': '🐘', 'sql': '📄', 'shell': '💻', 'powershell': '💻',
+    'markdown': '📝', 'json': '📋', 'yaml': '📋',
+    'xml': '📋', 'dockerfile': '🐳',
+  };
+  return icons[lang] || '📄';
+}
+
+// Initialize Monaco
+require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+require(['vs/editor/editor.main'], function(m) {
+  monaco = m;
+
+  // Custom dark theme
+  monaco.editor.defineTheme('webide-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '569cd6' },
+      { token: 'string', foreground: 'ce9178' },
+      { token: 'number', foreground: 'b5cea8' },
+      { token: 'type', foreground: '4ec9b0' },
+      { token: 'function', foreground: 'dcdcaa' },
+      { token: 'variable', foreground: '9cdcfe' },
+    ],
+    colors: {
+      'editor.background': '#1e1e1e',
+      'editor.foreground': '#d4d4d4',
+      'editor.lineHighlightBackground': '#2a2d2e',
+      'editor.selectionBackground': '#264f78',
+      'editor.inactiveSelectionBackground': '#3a3d41',
+      'editorCursor.foreground': '#aeafad',
+      'editorLineNumber.foreground': '#858585',
+      'editorLineNumber.activeForeground': '#c6c6c6',
+    }
+  });
+
+  // Create editor
+  editor = monaco.editor.create(document.getElementById('editorContainer'), {
+    value: '',
+    language: 'plaintext',
+    theme: 'webide-dark',
+    fontSize: 14,
+    fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace",
+    fontLigatures: true,
+    minimap: { enabled: true, scale: 1, showSlider: 'mouseover' },
+    lineNumbers: 'on',
+    renderWhitespace: 'selection',
+    bracketPairColorization: { enabled: true },
+    autoClosingBrackets: 'always',
+    autoClosingQuotes: 'always',
+    formatOnPaste: true,
+    suggest: { showWords: true, showSnippets: true },
+    tabSize: 2,
+    insertSpaces: true,
+    smoothScrolling: true,
+    cursorBlinking: 'smooth',
+    cursorSmoothCaretAnimation: 'on',
+    padding: { top: 8, bottom: 8 },
+    scrollBeyondLastLine: false,
+    wordWrap: 'off',
+    fixedOverflowWidgets: true,
+    automaticLayout: true,
+  });
+
+  // Track cursor position
+  editor.onDidChangeCursorPosition(function(e) {
+    document.getElementById('cursorPos').textContent =
+      'Ln ' + e.position.lineNumber + ', Col ' + e.position.column;
+    hideGhostCompletion();
+  });
+
+  // Track content changes
+  editor.onDidChangeModelContent(function() {
+    if (STATE.activeFile) {
+      var f = STATE.files[STATE.activeFile];
+      if (f) {
+        f.dirty = (editor.getValue() !== f.content);
+        f._currentContent = editor.getValue();
+      }
+      renderTabs();
+    }
+    hideGhostCompletion();
+    debouncedAIComplete();
+  });
+
+  // Register AI completion provider
+  registerAICompletionProvider();
+
+  // Keyboard shortcuts
+  editor.addAction({
+    id: 'run-code',
+    label: 'Run Code',
+    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+    run: function() { runCode(); },
+  });
+
+  editor.addAction({
+    id: 'trigger-ai-complete',
+    label: 'AI Complete',
+    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space],
+    run: function() { triggerManualAIComplete(); },
+  });
+
+  editor.addAction({
+    id: 'format-document',
+    label: 'Format Document',
+    keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+    run: function() { formatCode(); },
+  });
+
+  editor.addAction({
+    id: 'save-file',
+    label: 'Save File',
+    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+    run: function() { saveCurrentFile(); },
+  });
+
+  // Load state and initialize
+  loadState();
+  initDefaultFiles();
+  applyAISettings();
+  refreshFileTree();
+  if (STATE.openTabs.length > 0) {
+    openFile(STATE.openTabs[0]);
+  } else {
+    var first = Object.keys(STATE.files)[0];
+    if (first) openFile(first);
+  }
+  panelLog('✨ WebIDE ready. Ctrl+Space for AI completion, Ctrl+Enter to run code.', 'info');
+  panelLog('⚙️ Click "AI: Not Configured" in status bar to set API Key.', 'warn');
+  updateAIStatus();
+  updateTokenBadge();
+});
+
+// ===================== AI COMPLETION =====================
+var aiCompleteTimer = null;
+var isAICompleting = false;
+
+function registerAICompletionProvider() {
+  if (!monaco) return;
+
+  monaco.languages.registerCompletionItemProvider('*', {
+    triggerCharacters: ['.', '(', '"', "'", ' ', '='],
+    provideCompletionItems: async function(model, position) {
+      if (!STATE.ai.enabled || !STATE.ai.apiKey) return { suggestions: [] };
+      if (!STATE.ai._autoTrigger) return { suggestions: [] };
+
+      var result = await getAICompletion(model, position);
+      if (!result || !result.text) return { suggestions: [] };
+
+      return {
+        suggestions: [{
+          label: result.text,
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: result.text,
+          detail: '🤖 AI Completion',
+          sortText: '0',
+          range: {
+            startLineNumber: position.lineNumber,
+            startColumn: position.column,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column,
+          }
+        }]
+      };
+    }
+  });
+}
+
+async function getAICompletion(model, position) {
+  var cacheKey = model.id + ':' + position.lineNumber + ':' + position.column + ':' + model.getValue().slice(0, 80);
+  if (STATE.completionsCache.has(cacheKey)) {
+    return STATE.completionsCache.get(cacheKey);
+  }
+
+  var lineContent = model.getLineContent(position.lineNumber);
+  var prefix = lineContent.substring(0, position.column - 1);
+
+  var startLine = Math.max(1, position.lineNumber - 8);
+  var context = '';
+  for (var i = startLine; i < position.lineNumber; i++) {
+    context += model.getLineContent(i) + '\n';
+  }
+  context += prefix;
+
+  if (context.length > 600) {
+    context = context.substring(context.length - 600);
+  }
+
+  var language = model.getLanguageId();
+  var systemPrompt = STATE.ai.systemPrompt + '\n\nFile language: ' + language + '. Provide only the code to insert at cursor.';
+  var userPrompt = 'Complete the following ' + language + ' code. Cursor at [CURSOR]. Return ONLY the completion, no explanation:\n\n```' + language + '\n' + context + '[CURSOR]\n```';
+
+  try {
+    isAICompleting = true;
+    updateAIStatus();
+
+    var response = await fetch(STATE.ai.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + STATE.ai.apiKey,
+      },
+      body: JSON.stringify({
+        model: STATE.ai.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: STATE.ai.maxTokens,
+        temperature: 0.1,
+        stop: ['\n\n\n', '```'],
+      }),
+    });
+
+    if (!response.ok) {
+      var errText = await response.text();
+      throw new Error('API error ' + response.status + ': ' + errText.slice(0, 100));
+    }
+
+    var data = await response.json();
+    var usage = data.usage;
+    if (usage) {
+      STATE.tokenUsage.total += usage.total_tokens || 0;
+      STATE.tokenUsage.requests++;
+      updateTokenBadge();
+      saveState();
+    }
+
+    var completionText = data.choices?.[0]?.message?.content || '';
+    completionText = completionText
+      .replace(/^```[\s\S]*?\n/, '')
+      .replace(/```$/, '')
+      .replace(/^[\n\r]+/, '')
+      .trim();
+
+    var result = { text: completionText };
+    STATE.completionsCache.set(cacheKey, result);
+
+    if (STATE.completionsCache.size > 100) {
+      var firstKey = STATE.completionsCache.keys().next().value;
+      STATE.completionsCache.delete(firstKey);
+    }
+
+    return result;
+  } catch (err) {
+    console.warn('AI completion failed:', err.message);
+    return null;
+  } finally {
+    isAICompleting = false;
+    updateAIStatus();
+  }
+}
+
+function debouncedAIComplete() {
+  if (!STATE.ai._autoTrigger) return;
+  clearTimeout(aiCompleteTimer);
+  aiCompleteTimer = setTimeout(function() {
+    if (editor && STATE.ai.enabled && STATE.ai.apiKey) {
+      editor.trigger('keyboard', 'editor.action.triggerSuggest', {});
+    }
+  }, 800);
+}
+
+async function triggerManualAIComplete() {
+  if (!STATE.ai.enabled || !STATE.ai.apiKey) {
+    panelLog('⚠️ Please configure AI API Key first (click AI in status bar)', 'warn');
+    openAISettings();
+    return;
+  }
+  if (!editor) return;
+
+  var model = editor.getModel();
+  var position = editor.getPosition();
+  if (!model || !position) return;
+
+  panelLog('🤖 Requesting AI completion...', 'info');
+  var result = await getAICompletion(model, position);
+
+  if (result && result.text) {
+    editor.executeEdits('ai-complete', [{
+      range: {
+        startLineNumber: position.lineNumber,
+        startColumn: position.column,
+        endLineNumber: position.lineNumber,
+        endColumn: position.column,
+      },
+      text: result.text,
+    }]);
+    panelLog('✅ AI completion inserted (' + result.text.length + ' chars)', 'success');
+  } else {
+    panelLog('⚠️ AI returned no completion', 'warn');
+  }
+}
+
+function showGhostCompletion(text) {
+  if (!editor || !text) return;
+  hideGhostCompletion();
+  var pos = editor.getPosition();
+  if (!pos) return;
+  var el = document.getElementById('ghostCompletion');
+  if (el) {
+    var coords = editor.getScrolledVisiblePosition(pos);
+    if (coords) {
+      el.style.display = 'block';
+      el.style.left = (coords.left + 5) + 'px';
+      el.style.top = coords.top + 'px';
+      el.style.fontSize = editor.getOption(monaco.editor.EditorOption.fontSize) + 'px';
+      el.textContent = text;
+    }
+  }
+}
+
+function hideGhostCompletion() {
+  var el = document.getElementById('ghostCompletion');
+  if (el) el.style.display = 'none';
+}
+
+// ===================== FILE MANAGEMENT =====================
+function initDefaultFiles() {
+  if (Object.keys(STATE.files).length === 0) {
+    STATE.files['index.html'] = {
+      name: 'index.html',
+      content: '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>My App</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <h1>Hello WebIDE!</h1>\n  <p>Start coding here. Press Ctrl+Space for AI completion.</p>\n  <script src="script.js"><\/script>\n</body>\n</html>',
+      language: 'html',
+      dirty: false,
+    };
+    STATE.files['style.css'] = {
+      name: 'style.css',
+      content: 'body {\n  font-family: system-ui, sans-serif;\n  max-width: 800px;\n  margin: 0 auto;\n  padding: 2rem;\n  background: #f5f5f5;\n}\n\nh1 {\n  color: #333;\n  text-align: center;\n}',
+      language: 'css',
+      dirty: false,
+    };
+    STATE.files['script.js'] = {
+      name: 'script.js',
+      content: '// Your JavaScript here\nconsole.log("Hello from WebIDE!");\n\ndocument.addEventListener("DOMContentLoaded", function() {\n  var h1 = document.querySelector("h1");\n  if (h1) {\n    h1.addEventListener("click", function() {\n      h1.style.color = "#007acc";\n    });\n  }\n});',
+      language: 'javascript',
+      dirty: false,
+    };
+    STATE.openTabs = ['index.html'];
+    STATE.activeFile = 'index.html';
+    saveState();
+  }
+}
+
+function refreshFileTree() {
+  var container = document.getElementById('fileTree');
+  container.innerHTML = '';
+
+  var rootFiles = [];
+  var folderMap = {};
+
+  for (var path in STATE.files) {
+    if (!STATE.files.hasOwnProperty(path)) continue;
+    var parts = path.split('/');
+    if (parts.length === 1) {
+      rootFiles.push(path);
+    } else {
+      var folder = parts.slice(0, -1).join('/');
+      if (!folderMap[folder]) folderMap[folder] = [];
+      folderMap[folder].push(path);
+    }
+  }
+
+  function renderFileItem(path, parentEl, indent) {
+    var file = STATE.files[path];
+    if (!file) return;
+    var isActive = path === STATE.activeFile;
+    var el = document.createElement('div');
+    el.className = 'file-item' + (isActive ? ' active' : '');
+    if (indent) el.style.paddingLeft = (14 + indent * 16) + 'px';
+    el.innerHTML =
+      '<span class="icon">' + getFileIcon(file.name) + '</span>' +
+      '<span class="name">' + escHtml(file.name) + '</span>' +
+      '<span class="lang-badge">' + file.language + '</span>';
+    el.onclick = function() { openFile(path); };
+    el.oncontextmenu = function(e) { e.preventDefault(); showContextMenu(e, path); };
+    (parentEl || container).appendChild(el);
+  }
+
+  function renderFolderIn(folderPath, parentEl, depth) {
+    var parts = folderPath.split('/');
+    var name = parts[parts.length - 1];
+    if (!STATE._expandedFolders) STATE._expandedFolders = new Set();
+    var isExpanded = STATE._expandedFolders.has(folderPath) !== false;
+    if (STATE._expandedFolders.has(folderPath) === undefined) STATE._expandedFolders.add(folderPath);
+
+    var folderEl = document.createElement('div');
+    folderEl.className = 'folder-item' + (isExpanded ? ' expanded' : '');
+    folderEl.style.paddingLeft = (14 + depth * 16) + 'px';
+    folderEl.innerHTML = '<span class="arrow">▶</span><span>📁</span><span class="name">' + escHtml(name) + '</span>';
+    folderEl.onclick = function(e) {
+      e.stopPropagation();
+      if (STATE._expandedFolders.has(folderPath)) {
+        STATE._expandedFolders.delete(folderPath);
+      } else {
+        STATE._expandedFolders.add(folderPath);
+      }
+      refreshFileTree();
+    };
+    parentEl.appendChild(folderEl);
+
+    var childrenEl = document.createElement('div');
+    childrenEl.className = 'folder-children';
+    if (!isExpanded) childrenEl.style.display = 'none';
+    parentEl.appendChild(childrenEl);
+
+    // Sub-folders
+    var subFolders = new Set();
+    var files = folderMap[folderPath] || [];
+    for (var i = 0; i < files.length; i++) {
+      var rel = files[i].substring(folderPath.length + 1);
+      if (rel.includes('/')) {
+        subFolders.add(folderPath + '/' + rel.split('/')[0]);
+      }
+    }
+    subFolders.forEach(function(sub) {
+      renderFolderIn(sub, childrenEl, depth + 1);
+    });
+
+    // Files in this folder
+    for (var j = 0; j < files.length; j++) {
+      var rel2 = files[j].substring(folderPath.length + 1);
+      if (!rel2.includes('/')) {
+        renderFileItem(files[j], childrenEl, 0);
+      }
+    }
+  }
+
+  // Root files
+  for (var r = 0; r < rootFiles.length; r++) {
+    renderFileItem(rootFiles[r], container, 0);
+  }
+
+  // Root folders
+  var rootFolders = new Set();
+  for (var p in STATE.files) {
+    if (p.includes('/')) {
+      rootFolders.add(p.split('/')[0]);
+    }
+  }
+  rootFolders.forEach(function(folder) {
+    renderFolderIn(folder, container, 0);
+  });
+}
+
+function openFile(path) {
+  if (!STATE.files[path]) return;
+
+  if (STATE.activeFile && STATE.files[STATE.activeFile] && editor) {
+    STATE.files[STATE.activeFile]._currentContent = editor.getValue();
+  }
+
+  STATE.activeFile = path;
+
+  if (STATE.openTabs.indexOf(path) === -1) {
+    STATE.openTabs.push(path);
+  }
+
+  var file = STATE.files[path];
+  if (editor && monaco) {
+    var uri = monaco.Uri.parse('file:///' + path);
+    var model = monaco.editor.getModel(uri);
+    if (!model) {
+      model = monaco.editor.createModel(file._currentContent || file.content, file.language, uri);
+    }
+    editor.setModel(model);
+    monaco.editor.setModelLanguage(model, file.language);
+  }
+
+  document.getElementById('langLabel').textContent = getLanguageDisplayName(file.language);
+  renderTabs();
+  refreshFileTree();
+  updatePreview();
+}
+
+function closeTab(path, e) {
+  if (e) e.stopPropagation();
+  var idx = STATE.openTabs.indexOf(path);
+  if (idx === -1) return;
+
+  var file = STATE.files[path];
+  if (file && file.dirty) {
+    if (!confirm('File "' + file.name + '" has unsaved changes. Close anyway?')) return;
+  }
+
+  STATE.openTabs.splice(idx, 1);
+
+  if (STATE.activeFile === path) {
+    var newIdx = Math.min(idx, STATE.openTabs.length - 1);
+    if (STATE.openTabs[newIdx]) {
+      openFile(STATE.openTabs[newIdx]);
+    } else {
+      STATE.activeFile = null;
+      if (editor) editor.setModel(null);
+    }
+  }
+
+  renderTabs();
+  refreshFileTree();
+}
+
+function saveCurrentFile() {
+  if (!STATE.activeFile || !editor) return;
+  var file = STATE.files[STATE.activeFile];
+  if (!file) return;
+
+  file.content = editor.getValue();
+  file._currentContent = file.content;
+  file.dirty = false;
+  renderTabs();
+  saveState();
+  panelLog('💾 Saved: ' + file.name, 'success');
+}
+
+function createFile() {
+  var name = prompt('File name (with extension):', 'untitled.js');
+  if (!name) return;
+
+  if (STATE.files[name]) {
+    panelLog('⚠️ File already exists', 'warn');
+    return;
+  }
+
+  var lang = getLanguage(name);
+  var defaultContent = {
+    'html': '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Page</title>\n</head>\n<body>\n  \n</body>\n</html>',
+    'javascript': '// ' + name + '\n',
+    'typescript': '// ' + name + '\n',
+    'python': '# ' + name + '\n',
+    'css': '/* ' + name + ' */\n',
+  }[lang] || '';
+
+  STATE.files[name] = { name: name, content: defaultContent, language: lang, dirty: false, _currentContent: defaultContent };
+  saveState();
+  refreshFileTree();
+  openFile(name);
+  panelLog('📄 Created: ' + name, 'success');
+}
+
+function createFolder() {
+  var name = prompt('Folder name:');
+  if (!name) return;
+  STATE.folders.add(name);
+  var placeholder = name + '/.gitkeep';
+  STATE.files[placeholder] = { name: '.gitkeep', content: '', language: 'plaintext', dirty: false, _currentContent: '' };
+  saveState();
+  refreshFileTree();
+  panelLog('📁 Created folder: ' + name, 'success');
+}
+
+function deleteFileInTree(path) {
+  var file = STATE.files[path];
+  if (!file) return;
+  if (!confirm('Delete "' + file.name + '"? This cannot be undone.')) return;
+
+  closeTab(path);
+  STATE.openTabs = STATE.openTabs.filter(function(t) { return t !== path; });
+  delete STATE.files[path];
+  saveState();
+  refreshFileTree();
+  renderTabs();
+  panelLog('🗑️ Deleted: ' + file.name, 'warn');
+}
+
+function renameFileInTree(path) {
+  var file = STATE.files[path];
+  if (!file) return;
+  var newName = prompt('New name:', file.name);
+  if (!newName || newName === file.name) return;
+
+  var parts = path.split('/');
+  parts[parts.length - 1] = newName;
+  var newPath = parts.join('/');
+
+  if (STATE.files[newPath]) {
+    panelLog('⚠️ Target file already exists', 'warn');
+    return;
+  }
+
+  STATE.files[newPath] = { name: newName, content: file.content, language: getLanguage(newName), dirty: file.dirty, _currentContent: file._currentContent || file.content };
+  delete STATE.files[path];
+  STATE.openTabs = STATE.openTabs.map(function(t) { return t === path ? newPath : t; });
+  if (STATE.activeFile === path) STATE.activeFile = newPath;
+  saveState();
+  refreshFileTree();
+  renderTabs();
+  openFile(newPath);
+  panelLog('✏️ Renamed to: ' + newName, 'success');
+}
+
+function renderTabs() {
+  var container = document.getElementById('tabsBar');
+  container.innerHTML = '';
+  for (var i = 0; i < STATE.openTabs.length; i++) {
+    var path = STATE.openTabs[i];
+    var file = STATE.files[path];
+    if (!file) continue;
+    var isActive = path === STATE.activeFile;
+    var dirty = file.dirty ? ' dirty' : '';
+    var div = document.createElement('div');
+    div.className = 'tab' + (isActive ? ' active' : '') + dirty;
+    div.onclick = function(p) { return function() { openFile(p); }; }(path);
+    div.innerHTML =
+      '<span class="icon" style="font-size:12px">' + getFileIcon(file.name) + '</span>' +
+      '<span class="name">' + escHtml(file.name) + '</span>' +
+      '<span class="close" onclick="closeTab(\'' + escAttr(path) + '\', event)">×</span>';
+    container.appendChild(div);
+  }
+}
+
+// ===================== CONTEXT MENU =====================
+function showContextMenu(e, path) {
+  var menu = document.getElementById('contextMenu');
+  menu.innerHTML =
+    '<div class="menu-item" onclick="openFile(\'' + escAttr(path) + '\');hideContextMenu()">📂 Open</div>' +
+    '<div class="menu-item" onclick="renameFileInTree(\'' + escAttr(path) + '\');hideContextMenu()">✏️ Rename</div>' +
+    '<div class="menu-divider"></div>' +
+    '<div class="menu-item" onclick="deleteFileInTree(\'' + escAttr(path) + '\');hideContextMenu()" style="color:var(--red)">🗑️ Delete</div>';
+  menu.style.left = e.pageX + 'px';
+  menu.style.top = e.pageY + 'px';
+  menu.classList.add('show');
+}
+
+function hideContextMenu() {
+  document.getElementById('contextMenu').classList.remove('show');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.context-menu')) hideContextMenu();
+});
+
+// ===================== PANELS =====================
+function switchPanel(name) {
+  STATE.activePanel = name;
+  var tabs = document.querySelectorAll('.panel-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.toggle('active', tabs[i].dataset.panel === name);
+  }
+
+  var output = document.getElementById('panelOutput');
+  var iframe = document.getElementById('previewFrame');
+
+  if (name === 'preview') {
+    output.style.display = 'none';
+    iframe.style.display = 'block';
+    updatePreview();
+  } else {
+    output.style.display = 'block';
+    iframe.style.display = 'none';
+    if (name === 'tokens') {
+      showTokenUsage();
+    }
+  }
+}
+
+function panelLog(msg, type) {
+  var output = document.getElementById('panelOutput');
+  if (STATE.activePanel !== 'output') {
+    switchPanel('output');
+  }
+  var cls = type || '';
+  output.innerHTML += '<span class="' + cls + '">[' + new Date().toLocaleTimeString() + '] ' + msg + '</span>\n';
+  output.scrollTop = output.scrollHeight;
+}
+
+// Expose log globally for compatibility
+var log = panelLog;
+
+function showTokenUsage() {
+  var output = document.getElementById('panelOutput');
+  var t = STATE.tokenUsage;
+  output.innerHTML =
+    '<span class="token-info">📊 Token Usage Statistics</span>\n\n' +
+    '<span>Total Requests: <b>' + t.requests + '</b></span>\n' +
+    '<span>Total Tokens: <b>' + t.total.toLocaleString() + '</b></span>\n' +
+    '<span>Est. Cost (DeepSeek): <b>$' + ((t.total / 1000000) * 0.28).toFixed(6) + '</b></span>\n' +
+    '<span>Est. Cost (GPT-4o-mini): <b>$' + ((t.total / 1000000) * 0.60).toFixed(6) + '</b></span>\n\n' +
+    '<span style="color:var(--text-muted)">Each completion ~100-300 tokens (context included)</span>\n' +
+    '<span style="color:var(--text-muted)">DeepSeek is ~10x cheaper than GPT-4o</span>';
+}
+
+function updateTokenBadge() {
+  var badge = document.getElementById('tokenBadge');
+  var total = STATE.tokenUsage.total;
+  if (total > 0) {
+    badge.style.display = 'inline';
+    badge.textContent = '🪙 ' + total.toLocaleString() + ' tokens';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Preview
+function updatePreview() {
+  if (STATE.activePanel !== 'preview') return;
+  var iframe = document.getElementById('previewFrame');
+  if (!iframe) return;
+
+  var htmlFile = null, cssFile = null, jsFile = null;
+  for (var key in STATE.files) {
+    var f = STATE.files[key];
+    if (f.language === 'html' && !htmlFile) htmlFile = f;
+    if (f.language === 'css' && !cssFile) cssFile = f;
+    if (f.language === 'javascript' && !jsFile) jsFile = f;
+  }
+
+  var html = htmlFile ? (htmlFile._currentContent || htmlFile.content) : '<h1>No HTML file</h1>';
+
+  if (cssFile) {
+    var css = cssFile._currentContent || cssFile.content;
+    html = html.replace('</head>', '<style>\n' + css + '\n</style>\n</head>');
+  }
+
+  if (jsFile) {
+    var js = jsFile._currentContent || jsFile.content;
+    html = html.replace('</body>', '<script>\n' + js + '\n<\/script>\n</body>');
+  }
+
+  var blob = new Blob([html], { type: 'text/html' });
+  iframe.src = URL.createObjectURL(blob);
+}
+
+// ===================== CODE ACTIONS =====================
+function runCode() {
+  if (!STATE.activeFile || !editor) return;
+  saveCurrentFile();
+
+  var file = STATE.files[STATE.activeFile];
+  var content = file._currentContent || file.content;
+  var lang = file.language;
+
+  if (lang === 'html') {
+    switchPanel('preview');
+    updatePreview();
+    panelLog('🌐 Preview updated', 'info');
+  } else if (lang === 'javascript' || lang === 'typescript') {
+    try {
+      var result = new Function(content)();
+      panelLog('▶ Execution result: ' + (result !== undefined ? JSON.stringify(result) : 'undefined'), 'info');
+    } catch (err) {
+      panelLog('❌ Error: ' + err.message, 'error');
+    }
+  } else {
+    panelLog('💡 Use Preview panel (HTML/CSS/JS) or check browser console', 'info');
+    switchPanel('preview');
+    updatePreview();
+  }
+}
+
+function formatCode() {
+  if (!editor) return;
+  editor.getAction('editor.action.formatDocument')?.run();
+  panelLog('✅ Code formatted', 'success');
+}
+
+// ===================== AI SETTINGS =====================
+function openAISettings() {
+  var modal = document.getElementById('aiSettingsModal');
+  document.getElementById('aiProvider').value = STATE.ai.provider;
+  document.getElementById('aiApiKey').value = STATE.ai.apiKey;
+  document.getElementById('aiEndpoint').value = STATE.ai.endpoint;
+  document.getElementById('aiModel').value = STATE.ai.model;
+  document.getElementById('aiSystemPrompt').value = STATE.ai.systemPrompt;
+  document.getElementById('aiMaxTokens').value = STATE.ai.maxTokens;
+  modal.classList.add('show');
+}
+
+function closeAISettings() {
+  document.getElementById('aiSettingsModal').classList.remove('show');
+}
+
+function handleProviderChange() {
+  var provider = document.getElementById('aiProvider').value;
+  var endpointEl = document.getElementById('aiEndpoint');
+  var modelEl = document.getElementById('aiModel');
+
+  var configs = {
+    'openai': { endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
+    'deepseek': { endpoint: 'https://api.deepseek.com/v1/chat/completions', model: 'deepseek-chat' },
+  };
+
+  if (configs[provider]) {
+    endpointEl.value = configs[provider].endpoint;
+    modelEl.value = configs[provider].model;
+  }
+}
+
+function saveAISettings() {
+  STATE.ai.provider = document.getElementById('aiProvider').value;
+  STATE.ai.apiKey = document.getElementById('aiApiKey').value.trim();
+  STATE.ai.endpoint = document.getElementById('aiEndpoint').value.trim();
+  STATE.ai.model = document.getElementById('aiModel').value.trim();
+  STATE.ai.systemPrompt = document.getElementById('aiSystemPrompt').value.trim();
+  STATE.ai.maxTokens = parseInt(document.getElementById('aiMaxTokens').value) || 80;
+  STATE.ai.enabled = !!STATE.ai.apiKey;
+
+  saveState();
+  applyAISettings();
+  closeAISettings();
+  updateAIStatus();
+
+  if (STATE.ai.enabled) {
+    panelLog('✅ AI completion configured and enabled', 'success');
+  } else {
+    panelLog('⚠️ Enter API Key to enable AI completion', 'warn');
+  }
+}
+
+function clearAISettings() {
+  STATE.ai.apiKey = '';
+  STATE.ai.enabled = false;
+  STATE.ai._autoTrigger = false;
+  document.getElementById('aiApiKey').value = '';
+  saveState();
+  applyAISettings();
+  closeAISettings();
+  updateAIStatus();
+  panelLog('🗑️ AI config cleared', 'info');
+}
+
+function applyAISettings() {
+  updateAIStatus();
+}
+
+function toggleAIAutoComplete() {
+  STATE.ai._autoTrigger = !STATE.ai._autoTrigger;
+  updateAIStatus();
+  var status = STATE.ai._autoTrigger ? 'ON' : 'OFF';
+  panelLog('🤖 AI auto-complete: ' + status, 'info');
+}
+
+function updateAIStatus() {
+  var statusEl = document.getElementById('aiStatus');
+  var indicatorEl = document.getElementById('aiIndicator');
+
+  if (isAICompleting) {
+    statusEl.textContent = 'AI: Generating...';
+    indicatorEl.className = 'ai-indicator loading';
+    indicatorEl.textContent = 'AI Auto: Loading...';
+  } else if (STATE.ai.enabled && STATE.ai.apiKey) {
+    statusEl.textContent = 'AI: ' + STATE.ai.model;
+    if (STATE.ai._autoTrigger) {
+      indicatorEl.className = 'ai-indicator on';
+      indicatorEl.textContent = 'AI Auto: ON';
+    } else {
+      indicatorEl.className = 'ai-indicator off';
+      indicatorEl.textContent = 'AI Auto: OFF (Ctrl+Space)';
+    }
+  } else {
+    statusEl.textContent = 'AI: Not Configured';
+    indicatorEl.className = 'ai-indicator off';
+    indicatorEl.textContent = 'AI Auto: OFF';
+  }
+}
+
+// ===================== UTILS =====================
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function escAttr(s) {
+  return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function getLanguageDisplayName(lang) {
+  var names = {
+    'html': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'typescript': 'TypeScript',
+    'python': 'Python', 'ruby': 'Ruby', 'java': 'Java', 'kotlin': 'Kotlin',
+    'swift': 'Swift', 'c': 'C', 'cpp': 'C++', 'csharp': 'C#', 'go': 'Go',
+    'rust': 'Rust', 'php': 'PHP', 'sql': 'SQL', 'shell': 'Shell',
+    'markdown': 'Markdown', 'json': 'JSON', 'yaml': 'YAML', 'xml': 'XML',
+    'dockerfile': 'Dockerfile', 'plaintext': 'Plain Text',
+  };
+  return names[lang] || lang;
+}
+
+function showToast(msg, type) {
+  var toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast ' + (type || '') + ' show';
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(function() { toast.classList.remove('show'); }, 2000);
+}
+
+// ===================== SIDEBAR RESIZE =====================
+(function initResize() {
+  var handle = document.getElementById('sidebarResize');
+  var sidebar = document.getElementById('sidebar');
+  var isResizing = false;
+  var startX, startWidth;
+
+  handle.addEventListener('mousedown', function(e) {
+    isResizing = true;
+    startX = e.clientX;
+    startWidth = sidebar.offsetWidth;
+    handle.classList.add('active');
+    document.body.style.cursor = 'col-resize';
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!isResizing) return;
+    var newWidth = startWidth + (e.clientX - startX);
+    if (newWidth >= 180 && newWidth <= 500) {
+      sidebar.style.width = newWidth + 'px';
+    }
+  });
+
+  document.addEventListener('mouseup', function() {
+    isResizing = false;
+    handle.classList.remove('active');
+    document.body.style.cursor = '';
+    if (editor) editor.layout();
+  });
+})();
+
+// Panel resize
+(function initPanelResize() {
+  var handle = document.getElementById('panelResize');
+  var panel = document.getElementById('bottomPanel');
+  var isResizing = false;
+  var startY, startHeight;
+
+  handle.addEventListener('mousedown', function(e) {
+    isResizing = true;
+    startY = e.clientY;
+    startHeight = panel.offsetHeight;
+    document.body.style.cursor = 'ns-resize';
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!isResizing) return;
+    var newHeight = startHeight - (e.clientY - startY);
+    if (newHeight >= 60 && newHeight <= 500) {
+      panel.style.height = newHeight + 'px';
+    }
+  });
+
+  document.addEventListener('mouseup', function() {
+    isResizing = false;
+    document.body.style.cursor = '';
+    if (editor) editor.layout();
+  });
+})();
+
+// ===================== KEYBOARD SHORTCUTS =====================
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 's') {
+    e.preventDefault();
+    saveCurrentFile();
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeAISettings();
+    hideContextMenu();
+  }
+});
+
+// ===================== INITIALIZATION =====================
+console.log('🚀 WebIDE loaded. Monaco Editor initializing...');
+console.log('💡 Tips:');
+console.log('  - Click status bar "AI: Not Configured" to set API key');
+console.log('  - Ctrl+Space for manual AI completion');
+console.log('  - Ctrl+Enter to run/preview code');
+console.log('  - Ctrl+S to save');
+console.log('  - Right-click files in explorer for options');
+console.log('  - AI auto-completion triggers after typing pause (800ms)');
+console.log('  - Token-efficient prompts (~200 tokens/request with DeepSeek)');
+</script>
+
+</body>
+</html>
