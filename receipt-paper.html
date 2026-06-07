@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>互动小票 - Verlet 纸张物理模拟</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #ffffff;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+  }
+  body.dragging { cursor: grabbing; }
+  body.orbiting { cursor: move; }
+  #info {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #999;
+    font-size: 13px;
+    pointer-events: none;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  #info span { color: #666; font-weight: bold; }
+  #stats {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    color: #bbb;
+    font-size: 11px;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="info">
+  <span>🖱 左键拖拽</span> 抓取小票 &nbsp;|&nbsp;
+  <span>🖱 右键旋转</span> 视角 &nbsp;|&nbsp;
+  <span>🖱 滚轮</span> 缩放 &nbsp;|&nbsp;
+  <span>双击</span> 复位
+</div>
+<div id="stats"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ═══════════════════════════════════════════════
+//  CONFIGURATION
+// ═══════════════════════════════════════════════
+const CONFIG = {
+  gridW: 22,           // particles across width
+  gridH: 66,           // particles along height
+  receiptW: 2.0,       // world width
+  receiptH: 6.2,       // world height
+  spacing: 0.095,      // particle spacing
+  gravity: 12.5,       // gravity strength
+  mass: 0.06,          // particle mass
+  damping: 0.975,      // velocity damping
+  constraintIters: 6,  // constraint iteration passes
+  topPinnedRows: 1,    // fully pinned top rows
+  stiffTopRows: 6,     // rows with elevated stiffness
+  mouseRadius: 0.35,   // grab influence radius
+  maxGrabDist: 1.8,    // max distance for grab detection
+  plasticThreshold: 1.45, // stretch ratio to trigger crease
+  plasticRate: 0.04,   // crease formation speed
+  recoveryRate: 0.0008,// crease recovery speed
+  maxPlasticRatio: 0.65, // min rest length ratio for crease
+};
+
+// ═══════════════════════════════════════════════
+//  THREE.JS SETUP
+// ═══════════════════════════════════════════════
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xfafaf8);
+scene.fog = new THREE.Fog(0xfafaf8, 8, 22);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 30);
+camera.position.set(1.6, 0.0, 6.5);
+camera.lookAt(0, -0.15, 0);
+
+// ── Lighting ──────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0xfffaf0, 0.9);
+scene.add(ambientLight);
+
+const hemisphereLight = new THREE.HemisphereLight(0xfffef8, 0xe8e0d8, 0.55);
+scene.add(hemisphereLight);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.6);
+keyLight.position.set(4, 7, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 1024;
+keyLight.shadow.mapSize.height = 1024;
+keyLight.shadow.camera.near = 0.5;
+keyLight.shadow.camera.far = 30;
+keyLight.shadow.camera.left = -6;
+keyLight.shadow.camera.right = 6;
+keyLight.shadow.camera.top = 6;
+keyLight.shadow.camera.bottom = -6;
+keyLight.shadow.bias = -0.0004;
+keyLight.shadow.normalBias = 0.02;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xfff8f0, 0.5);
+fillLight.position.set(-2, 1, -2);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
+rimLight.position.set(0, -1, 3);
+scene.add(rimLight);
+
+// ── Ground plane (shadow catcher) ────────────
+const groundGeo = new THREE.PlaneGeometry(14, 14);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0xf8f6f0,
+  roughness: 0.95,
+  metalness: 0.0,
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.position.y = -3.8;
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ═══════════════════════════════════════════════
+//  CANVAS TEXTURE — Receipt Content
+// ═══════════════════════════════════════════════
+function createReceiptTexture() {
+  const dpr = Math.min(window.devicePixelRatio, 2);
+  const W = 440;
+  const H = 1320;
+  const canvas = document.createElement('canvas');
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  // Paper base — warm thermal paper
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#faf7f0');
+  grad.addColorStop(0.3, '#f7f3ea');
+  grad.addColorStop(0.7, '#f5f1e7');
+  grad.addColorStop(1, '#f3efe4');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle paper grain
+  const imageData = ctx.getImageData(0, 0, W, H);
+  for (let i = 0; i < imageData.data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * 6;
+    imageData.data[i] += noise;
+    imageData.data[i + 1] += noise;
+    imageData.data[i + 2] += noise;
+  }
+  ctx.putImageData(imageData, 0, 0);
+
+  // Subtle horizontal texture lines (thermal paper)
+  ctx.strokeStyle = 'rgba(0,0,0,0.015)';
+  ctx.lineWidth = 0.5;
+  for (let y = 0; y < H; y += 3) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y + (Math.random() - 0.5) * 2);
+    ctx.stroke();
+  }
+
+  // ── Draw receipt content ────────────────────
+  const cx = W / 2;
+  let y = 38;
+
+  // Store header
+  ctx.fillStyle = '#3a3530';
+  ctx.font = 'bold 22px "Courier New", "SimHei", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('🛒  图形学超市', cx, y);
+  y += 22;
+  ctx.font = 'bold 12px "Courier New", monospace';
+  ctx.fillStyle = '#5a5550';
+  ctx.fillText('GRAPHICS MART™ — Since glBegin()', cx, y);
+  y += 24;
+
+  // Separator
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(30, y); ctx.lineTo(W - 30, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  y += 16;
+
+  // Date & transaction
+  ctx.fillStyle = '#4a4540';
+  ctx.font = '11px "Courier New", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('日期: 2026-06-07  14:23:07', 36, y);
+  y += 15;
+  ctx.fillText('单号: TXN#0xDEADBEEF', 36, y);
+  y += 15;
+  ctx.fillText('收银: 小陈 (工号 #42)', 36, y);
+  y += 20;
+
+  // Separator
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 0.4;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(30, y); ctx.lineTo(W - 30, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  y += 17;
+
+  // Column headers
+  ctx.fillStyle = '#555';
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('品名', 36, y);
+  ctx.textAlign = 'center';
+  ctx.fillText('数量', cx + 40, y);
+  ctx.textAlign = 'right';
+  ctx.fillText('单价 (渲染币)', W - 36, y);
+  y += 14;
+
+  // Items
+  const items = [
+    ['光线追踪引擎 Pro Max', '1', '¥1,299.00'],
+    ['PBR法线贴图 (毛孔级)', '2', '¥88.00'],
+    ['屏幕空间环境光遮蔽', '1', '¥66.00'],
+    ['硬件加速顶点缓冲区', '3', '¥45.00'],
+    ['自定义片段着色器', '1', '¥128.00'],
+    ['各向异性纹理采样器', '5', '¥35.00'],
+    ['32-bit 浮点深度缓冲', '1', '¥52.00'],
+    ['MSAA 8x 抗锯齿服务', '4', '¥199.00'],
+    ['实时阴影贴图 (带软影)', '1', '¥76.00'],
+    ['GPU 实例化渲染优惠券', '1', '-¥50.00'],
+  ];
+
+  ctx.font = '10px "Courier New", "SimHei", monospace';
+  ctx.fillStyle = '#333';
+  for (const [name, qty, price] of items) {
+    y += 16;
+    ctx.textAlign = 'left';
+    ctx.fillText(name, 36, y);
+    ctx.textAlign = 'center';
+    ctx.fillText(qty, cx + 40, y);
+    ctx.textAlign = 'right';
+    ctx.fillText(price, W - 36, y);
+  }
+
+  y += 18;
+
+  // Separator
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 0.4;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(30, y); ctx.lineTo(W - 30, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  y += 16;
+
+  // Totals
+  ctx.fillStyle = '#3a3530';
+  ctx.font = '11px "Courier New", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('小  计:  ¥1,938.00', W - 36, y);
+  y += 16;
+  ctx.fillText('税  费 (13%):  ¥251.94', W - 36, y);
+  y += 18;
+  ctx.font = 'bold 14px "Courier New", monospace';
+  ctx.fillText('合  计:  ¥2,189.94', W - 36, y);
+  y += 24;
+
+  // Payment
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 0.4;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(30, y); ctx.lineTo(W - 30, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  y += 16;
+
+  ctx.font = '10px "Courier New", monospace';
+  ctx.fillStyle = '#4a4540';
+  ctx.textAlign = 'left';
+  ctx.fillText('支付方式: GPU Coin 钱包', 36, y);
+  y += 14;
+  ctx.fillText('支付状态: ✅ 已结算', 36, y);
+  y += 14;
+  ctx.fillText('找  零:  ¥0.00', 36, y);
+  y += 22;
+
+  // Barcode area
+  ctx.fillStyle = '#333';
+  const bx = cx - 60, bw = 4;
+  for (let i = 0; i < 30; i++) {
+    const bh = 28 + Math.random() * 16;
+    ctx.fillRect(bx + i * bw, y, bw * 0.7, bh);
+  }
+  y += 42;
+
+  // Footer
+  ctx.fillStyle = '#777';
+  ctx.font = '9px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('GPU Bless You! — 感谢惠顾', cx, y);
+  y += 14;
+  ctx.fillText('退换政策: 光线追踪引擎一经售出概不退换', cx, y);
+  y += 14;
+  ctx.fillText('www.graphics-mart.example.com', cx, y);
+
+  // Perforation marks on sides
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  for (let py = 30; py < H - 30; py += 8) {
+    ctx.fillRect(10, py, 8, 3);
+    ctx.fillRect(W - 18, py, 8, 3);
+  }
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+const receiptTexture = createReceiptTexture();
+receiptTexture.colorSpace = THREE.SRGBColorSpace;
+receiptTexture.minFilter = THREE.LinearMipmapLinearFilter;
+receiptTexture.magFilter = THREE.LinearFilter;
+receiptTexture.generateMipmaps = true;
+
+// ═══════════════════════════════════════════════
+//  PARTICLE SYSTEM
+// ═══════════════════════════════════════════════
+class Particle {
+  constructor(x, y, z, row, col) {
+    this.pos = new THREE.Vector3(x, y, z);
+    this.prev = new THREE.Vector3(x, y, z);
+    this.restPos = new THREE.Vector3(x, y, z);
+    this.mass = CONFIG.mass;
+    this.pinned = false;
+    this.row = row;
+    this.col = col;
+  }
+
+  get velocity() {
+    return this.pos.clone().sub(this.prev);
+  }
+
+  pin() { this.pinned = true; }
+  unpin() { this.pinned = false; }
+}
+
+// Create particle grid
+const particles = [];
+const particleMap = {}; // "row,col" -> Particle
+const { gridW, gridH, receiptW, receiptH } = CONFIG;
+
+const startX = -receiptW / 2;
+const startY = receiptH / 2;
+const stepX = receiptW / (gridW - 1);
+const stepY = receiptH / (gridH - 1);
+
+for (let row = 0; row < gridH; row++) {
+  particles[row] = [];
+  for (let col = 0; col < gridW; col++) {
+    const x = startX + col * stepX;
+    const y = startY - row * stepY;
+    // Very subtle natural curl — thermal paper isn't perfectly flat
+    // Increases from zero at the top to a tiny forward bend at the bottom
+    const t = row / (gridH - 1);
+    const zCurl = t * t * 0.08; // max ~0.08 units at bottom
+    const p = new Particle(x, y, zCurl, row, col);
+    particles[row][col] = p;
+    particleMap[`${row},${col}`] = p;
+  }
+}
+
+// Pin top rows
+for (let row = 0; row < CONFIG.topPinnedRows; row++) {
+  for (let col = 0; col < gridW; col++) {
+    particles[row][col].pin();
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  CONSTRAINT SYSTEM
+// ═══════════════════════════════════════════════
+class Constraint {
+  constructor(p1, p2, type) {
+    this.p1 = p1;
+    this.p2 = p2;
+    this.type = type; // 'structural' | 'shear' | 'bend'
+    this.originalRest = p1.pos.distanceTo(p2.pos);
+    this.currentRest = this.originalRest;
+    this.plastic = type === 'bend'; // only bend constraints crease
+
+    // Stiffness based on row and type
+    const avgRow = (p1.row + p2.row) / 2;
+    this.stiffness = getStiffness(avgRow, type);
+  }
+}
+
+function getStiffness(row, type) {
+  const topRows = CONFIG.stiffTopRows;
+  if (row < topRows) {
+    // Very stiff near top — prevents sagging
+    const t = row / topRows;
+    const base = { structural: 0.92, shear: 0.55, bend: 0.75 }[type];
+    return base + (1.0 - base) * (1 - t) * 0.8;
+  }
+  // Gradually decreasing toward bottom
+  const t = Math.min((row - topRows) / (gridH - topRows), 1.0);
+  const top = { structural: 0.88, shear: 0.45, bend: 0.65 };
+  const bot = { structural: 0.55, shear: 0.20, bend: 0.32 };
+  return top[type] + (bot[type] - top[type]) * t;
+}
+
+const constraints = [];
+
+// Structural constraints (horizontal & vertical edges)
+for (let row = 0; row < gridH; row++) {
+  for (let col = 0; col < gridW - 1; col++) {
+    constraints.push(new Constraint(particles[row][col], particles[row][col + 1], 'structural'));
+  }
+}
+for (let row = 0; row < gridH - 1; row++) {
+  for (let col = 0; col < gridW; col++) {
+    constraints.push(new Constraint(particles[row][col], particles[row + 1][col], 'structural'));
+  }
+}
+
+// Shear constraints (diagonals)
+for (let row = 0; row < gridH - 1; row++) {
+  for (let col = 0; col < gridW - 1; col++) {
+    constraints.push(new Constraint(particles[row][col], particles[row + 1][col + 1], 'shear'));
+    constraints.push(new Constraint(particles[row][col + 1], particles[row + 1][col], 'shear'));
+  }
+}
+
+// Bend constraints (skip-1 connections)
+for (let row = 0; row < gridH; row++) {
+  for (let col = 0; col < gridW - 2; col++) {
+    constraints.push(new Constraint(particles[row][col], particles[row][col + 2], 'bend'));
+  }
+}
+for (let row = 0; row < gridH - 2; row++) {
+  for (let col = 0; col < gridW; col++) {
+    constraints.push(new Constraint(particles[row][col], particles[row + 2][col], 'bend'));
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  RENDERING MESH
+// ═══════════════════════════════════════════════
+const vertCount = gridW * gridH;
+const positionsArray = new Float32Array(vertCount * 3);
+const uvsArray = new Float32Array(vertCount * 2);
+const normalsArray = new Float32Array(vertCount * 3);
+const indicesArray = [];
+
+// UVs (static)
+for (let row = 0; row < gridH; row++) {
+  for (let col = 0; col < gridW; col++) {
+    const i = row * gridW + col;
+    uvsArray[i * 2] = col / (gridW - 1);
+    uvsArray[i * 2 + 1] = 1.0 - row / (gridH - 1);
+  }
+}
+
+// Indices (static)
+for (let row = 0; row < gridH - 1; row++) {
+  for (let col = 0; col < gridW - 1; col++) {
+    const a = row * gridW + col;
+    const b = a + 1;
+    const c = a + gridW;
+    const d = c + 1;
+    indicesArray.push(a, b, d);
+    indicesArray.push(a, d, c);
+  }
+}
+
+// Update initial positions
+function updatePositionsArray() {
+  for (let row = 0; row < gridH; row++) {
+    for (let col = 0; col < gridW; col++) {
+      const p = particles[row][col];
+      const i = (row * gridW + col) * 3;
+      positionsArray[i] = p.pos.x;
+      positionsArray[i + 1] = p.pos.y;
+      positionsArray[i + 2] = p.pos.z;
+    }
+  }
+}
+updatePositionsArray();
+
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute('position', new THREE.BufferAttribute(positionsArray, 3));
+geometry.setAttribute('uv', new THREE.BufferAttribute(uvsArray, 2));
+geometry.setIndex(indicesArray);
+geometry.setAttribute('normal', new THREE.BufferAttribute(normalsArray, 3));
+geometry.computeVertexNormals();
+
+// Thermal paper material
+const receiptMaterial = new THREE.MeshStandardMaterial({
+  map: receiptTexture,
+  color: new THREE.Color(0xfefcf7),
+  roughness: 0.58,
+  metalness: 0.0,
+  side: THREE.DoubleSide,
+  flatShading: false,
+});
+
+const receiptMesh = new THREE.Mesh(geometry, receiptMaterial);
+receiptMesh.castShadow = true;
+receiptMesh.receiveShadow = true;
+scene.add(receiptMesh);
+
+// ═══════════════════════════════════════════════
+//  PHYSICS
+// ═══════════════════════════════════════════════
+// Pre-allocated vectors for hot-path physics (avoids GC pressure)
+const _gravity = new THREE.Vector3(0, -CONFIG.gravity, 0);
+
+function verletIntegrate(dt) {
+  const dt2 = dt * dt;
+
+  for (let row = 0; row < gridH; row++) {
+    for (let col = 0; col < gridW; col++) {
+      const p = particles[row][col];
+      // Pinned particles (top edge) never move.
+      // Grabbed particles are positioned by the mouse — skip physics.
+      if (p.pinned || p._grabbed) continue;
+
+      const vel = p.pos.clone().sub(p.prev);
+      vel.multiplyScalar(CONFIG.damping);
+      // Scale gravity by dt² and mass; add to velocity
+      vel.x += _gravity.x * dt2 * p.mass;
+      vel.y += _gravity.y * dt2 * p.mass;
+      vel.z += _gravity.z * dt2 * p.mass;
+
+      p.prev.copy(p.pos);
+      p.pos.add(vel);
+      // Subtle z-restoring force (keeps paper from crumpling into a ball)
+      p.pos.z += (p.restPos.z - p.pos.z) * 0.03;
+    }
+  }
+}
+
+// Pre-allocated vectors for constraint solving (avoids ~120K allocations/frame)
+const _cdiff = new THREE.Vector3();
+const _cdir  = new THREE.Vector3();
+const _ccorr = new THREE.Vector3();
+
+function satisfyConstraints() {
+  for (let iter = 0; iter < CONFIG.constraintIters; iter++) {
+    for (const c of constraints) {
+      // Reuse _cdiff: p2.pos - p1.pos
+      _cdiff.copy(c.p2.pos).sub(c.p1.pos);
+      const dist = _cdiff.length();
+      if (dist < 0.0001) continue;
+
+      const target = c.currentRest;
+      const p1Fixed = c.p1.pinned || c.p1._grabbed;
+      const p2Fixed = c.p2.pinned || c.p2._grabbed;
+
+      // Both ends fixed — nothing to adjust
+      if (p1Fixed && p2Fixed) continue;
+
+      // When one end is fixed, the free end takes the full correction.
+      // When both are free, split 50/50.
+      const weight = (p1Fixed || p2Fixed) ? 1.0 : 0.5;
+      _cdir.copy(_cdiff).normalize();
+      _ccorr.copy(_cdir).multiplyScalar((dist - target) * weight * c.stiffness);
+
+      if (!p1Fixed) c.p1.pos.add(_ccorr);
+      if (!p2Fixed) c.p2.pos.sub(_ccorr);
+
+      // Plastic deformation for bend constraints (once per constraint per frame, not per iter)
+      if (iter === 0 && c.plastic && dist > c.originalRest * CONFIG.plasticThreshold) {
+        c.currentRest += (dist - c.currentRest) * CONFIG.plasticRate;
+        c.currentRest = Math.min(c.currentRest, c.originalRest * 1.5);
+      }
+      // Slow recovery toward original (once per frame)
+      if (iter === 0 && c.plastic) {
+        c.currentRest += (c.originalRest - c.currentRest) * CONFIG.recoveryRate;
+      }
+    }
+  }
+}
+
+function applyGroundConstraint() {
+  const groundY = -3.7;
+  for (let row = 0; row < gridH; row++) {
+    for (let col = 0; col < gridW; col++) {
+      const p = particles[row][col];
+      // Pinned and grabbed particles are exempt
+      if (p.pinned || p._grabbed) continue;
+      if (p.pos.y < groundY) {
+        p.pos.y = groundY;
+        // Soft landing — dampen velocity
+        p.prev.y = p.pos.y + (p.prev.y - p.pos.y) * 0.3;
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  MOUSE INTERACTION
+// ═══════════════════════════════════════════════
+const mouse = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+let grabbedParticles = [];
+let isDragging = false;
+let isOrbiting = false;
+let prevMouse = new THREE.Vector2();
+let prevMouse3D = new THREE.Vector3();
+let mouseVelocity = new THREE.Vector3();
+let grabTargetWorld = null; // stored target, applied in animation loop
+let orbitSpherical = { theta: Math.atan2(camera.position.x, camera.position.z), phi: Math.acos(camera.position.y / camera.position.length()), radius: camera.position.length() };
+
+function getMouse3DPosition(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  // Intersect with z=0 plane (the receipt's nominal plane)
+  const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  const target = new THREE.Vector3();
+  raycaster.ray.intersectPlane(plane, target);
+  return target;
+}
+
+function findClosestParticle(worldPos) {
+  let best = null;
+  let bestDist = CONFIG.maxGrabDist;
+  const startRow = Math.max(0, CONFIG.topPinnedRows);
+  for (let row = startRow; row < gridH; row++) {
+    for (let col = 0; col < gridW; col++) {
+      const p = particles[row][col];
+      const d = p.pos.distanceTo(worldPos);
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+  }
+  return best;
+}
+
+function grabParticles(center, worldPos) {
+  const grabbed = [];
+  const radius = CONFIG.mouseRadius;
+  for (let row = CONFIG.topPinnedRows; row < gridH; row++) {
+    for (let col = 0; col < gridW; col++) {
+      const p = particles[row][col];
+      const d = p.pos.distanceTo(center.pos);
+      if (d < radius) {
+        p._grabbed = true;
+        p._grabOffset = p.pos.clone().sub(worldPos);
+        p._grabWeight = 1.0 - (d / radius);
+        grabbed.push(p);
+      }
+    }
+  }
+  // Ensure at least one particle
+  if (grabbed.length === 0) {
+    center._grabbed = true;
+    center._grabOffset = center.pos.clone().sub(worldPos);
+    center._grabWeight = 1.0;
+    grabbed.push(center);
+  }
+  return grabbed;
+}
+
+function releaseParticles() {
+  for (const p of grabbedParticles) {
+    p._grabbed = false;
+    p._grabOffset = null;
+    p._grabWeight = 0;
+    // Inherit mouse velocity for natural throw
+    if (mouseVelocity.length() > 0.01) {
+      p.prev.copy(p.pos.clone().sub(mouseVelocity.clone().multiplyScalar(0.7)));
+    }
+  }
+  grabbedParticles = [];
+}
+
+function updateGrabbedParticles(worldPos) {
+  if (!worldPos) return;
+  const vel = worldPos.clone().sub(prevMouse3D);
+  mouseVelocity.copy(vel);
+  prevMouse3D.copy(worldPos);
+
+  for (const p of grabbedParticles) {
+    const target = worldPos.clone().add(p._grabOffset);
+    // Smooth toward target — higher weight = more responsive
+    const t = 0.7 * p._grabWeight + 0.3;
+    p.pos.lerp(target, t);
+    // Set velocity so release inherits mouse momentum
+    p.prev.copy(p.pos.clone().sub(vel.clone().multiplyScalar(0.8)));
+  }
+}
+
+// ── Event handlers ────────────────────────────
+const canvas = renderer.domElement;
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('pointerdown', (event) => {
+  if (event.button === 0) {
+    // Left click — try to grab receipt
+    const worldPos = getMouse3DPosition(event);
+    const closest = findClosestParticle(worldPos);
+    if (closest) {
+      isDragging = true;
+      grabTargetWorld = worldPos.clone();
+      document.body.classList.add('dragging');
+      prevMouse3D.copy(worldPos);
+      grabbedParticles = grabParticles(closest, worldPos);
+    }
+  } else if (event.button === 2) {
+    // Right click — orbit
+    isOrbiting = true;
+    document.body.classList.add('orbiting');
+    prevMouse.set(event.clientX, event.clientY);
+  }
+});
+
+window.addEventListener('pointermove', (event) => {
+  if (isDragging) {
+    // Store target — applied in animation loop for correct ordering
+    grabTargetWorld = getMouse3DPosition(event);
+  }
+  if (isOrbiting) {
+    const dx = event.clientX - prevMouse.x;
+    const dy = event.clientY - prevMouse.y;
+    orbitSpherical.theta -= dx * 0.005;
+    orbitSpherical.phi -= dy * 0.005;
+    orbitSpherical.phi = Math.max(0.2, Math.min(Math.PI * 0.45, orbitSpherical.phi));
+    updateCameraOrbit();
+    prevMouse.set(event.clientX, event.clientY);
+  }
+});
+
+window.addEventListener('pointerup', (event) => {
+  if (event.button === 0 && isDragging) {
+    isDragging = false;
+    grabTargetWorld = null;
+    document.body.classList.remove('dragging');
+    releaseParticles();
+  }
+  if (event.button === 2 && isOrbiting) {
+    isOrbiting = false;
+    document.body.classList.remove('orbiting');
+  }
+});
+
+canvas.addEventListener('wheel', (event) => {
+  event.preventDefault();
+  orbitSpherical.radius += event.deltaY * 0.005;
+  orbitSpherical.radius = Math.max(3.5, Math.min(12, orbitSpherical.radius));
+  updateCameraOrbit();
+}, { passive: false });
+
+canvas.addEventListener('dblclick', () => {
+  resetReceipt();
+});
+
+function updateCameraOrbit() {
+  const { theta, phi, radius } = orbitSpherical;
+  camera.position.set(
+    radius * Math.sin(phi) * Math.sin(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.cos(theta)
+  );
+  camera.lookAt(0, -0.15, 0);
+}
+
+function resetReceipt() {
+  for (let row = 0; row < gridH; row++) {
+    for (let col = 0; col < gridW; col++) {
+      const p = particles[row][col];
+      if (p.pinned) continue; // Pinned particles never move
+      p.pos.copy(p.restPos);
+      p.prev.copy(p.restPos);
+      p._grabbed = false;
+    }
+  }
+  // Reset constraint rest lengths
+  for (const c of constraints) {
+    c.currentRest = c.originalRest;
+  }
+  grabbedParticles = [];
+  grabTargetWorld = null;
+  isDragging = false;
+  document.body.classList.remove('dragging');
+}
+
+// ═══════════════════════════════════════════════
+//  ANIMATION LOOP
+// ═══════════════════════════════════════════════
+const clock = new THREE.Clock();
+let frameCount = 0;
+let fpsTime = 0;
+let fps = 60;
+
+function animate(timestamp) {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(clock.getDelta(), 0.033); // cap at ~30fps physics
+  const physicsSubSteps = 1;
+  const subDt = dt / physicsSubSteps;
+
+  for (let s = 0; s < physicsSubSteps; s++) {
+    verletIntegrate(subDt);
+    satisfyConstraints();
+    applyGroundConstraint();
+  }
+
+  // Apply grabbed-particle positions (after physics, before render)
+  // This ensures correct ordering: integrate → constrain → grab → render
+  updateGrabbedParticles(grabTargetWorld);
+
+  // Update mesh geometry
+  updatePositionsArray();
+  geometry.attributes.position.needsUpdate = true;
+  geometry.computeVertexNormals();
+
+  // Update shadow every other frame
+  if (frameCount % 2 === 0) {
+    keyLight.position.x = camera.position.x + 3;
+    keyLight.position.y = camera.position.y + 6;
+    keyLight.position.z = camera.position.z + 2;
+  }
+
+  renderer.render(scene, camera);
+
+  // FPS
+  frameCount++;
+  fpsTime += dt;
+  if (fpsTime >= 1.0) {
+    fps = Math.round(frameCount / fpsTime);
+    frameCount = 0;
+    fpsTime = 0;
+    document.getElementById('stats').textContent = `FPS: ${fps}  |  粒子: ${gridW * gridH}  |  约束: ${constraints.length}`;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  RESPONSIVE
+// ═══════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ═══════════════════════════════════════════════
+//  START
+// ═══════════════════════════════════════════════
+requestAnimationFrame(animate);
+
+console.log('%c🧾 图形学超市小票已就绪 %c| %cVerlet纸物理模拟',
+  'font-size:16px', '', 'color:#888');
+console.log('  🖱 左键拖拽 = 抓取  |  🖱 右键 = 旋转  |  🖱 滚轮 = 缩放  |  双击 = 复位');
+console.log('  粒子:', gridW * gridH, '| 约束:', constraints.length);
+</script>
+</body>
+</html>
