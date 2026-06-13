@@ -3,375 +3,951 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>xiaoy_ovo — 个人主页</title>
+<title>xiaoy_ovo</title>
 <style>
-  /* ============ RESET & BASE ============ */
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+/* ============================================================
+   iOS 26 LIQUID GLASS — PERSONAL PAGE
+   ============================================================ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-  :root {
-    --glass-bg: rgba(255, 255, 255, 0.06);
-    --glass-border: rgba(255, 255, 255, 0.12);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-    --glass-blur: blur(20px) saturate(180%);
-    --text-primary: #f0f0f0;
-    --text-secondary: #b0b0c0;
-    --accent: #7c5cfc;
-    --accent-glow: rgba(124, 92, 252, 0.45);
-    --radius: 24px;
-    --transition: 0.45s cubic-bezier(0.25, 0, 0, 1);
-  }
+:root {
+  /* iOS 26 palette */
+  --bg-deep: #0b0b14;
+  --liquid-bg: rgba(255,255,255,0.055);
+  --liquid-bg-strong: rgba(255,255,255,0.085);
+  --liquid-border: rgba(255,255,255,0.10);
+  --liquid-border-bright: rgba(255,255,255,0.18);
+  --liquid-highlight: rgba(255,255,255,0.06);
+  --text-0: #ffffff;
+  --text-1: #e8e8f0;
+  --text-2: #b0b0c8;
+  --text-3: #787890;
+  --accent: #6c5ce7;
+  --accent2: #38bdf8;
+  --accent3: #f472b6;
+  --accent4: #34d399;
+  --shadow-sm: 0 2px 12px rgba(0,0,0,0.25);
+  --shadow-md: 0 8px 40px rgba(0,0,0,0.35);
+  --shadow-lg: 0 24px 80px rgba(0,0,0,0.5);
+  --radius-sm: 18px;
+  --radius-md: 28px;
+  --radius-lg: 36px;
+  --spring: cubic-bezier(0.22, 0.88, 0.32, 1.12);
+  --spring-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-ios: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
 
-  body {
-    min-height: 100vh;
-    background: #0a0a14;
-    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
-    color: var(--text-primary);
-    display: flex; align-items: center; justify-content: center;
-    overflow-x: hidden;
-    cursor: default;
-    -webkit-font-smoothing: antialiased;
-  }
+html { font-size: 16px; scroll-behavior: smooth; }
 
-  /* ============ ANIMATED BG BLOBS ============ */
-  .bg-orbs {
-    position: fixed; inset: 0; z-index: 0;
-    overflow: hidden; pointer-events: none;
-  }
-  .bg-orbs::before,
-  .bg-orbs::after {
-    content: '';
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.48;
-    animation: orbDrift 14s ease-in-out infinite alternate;
-  }
-  .bg-orbs::before {
-    width: 620px; height: 620px;
-    background: radial-gradient(circle, #7c5cfc 0%, transparent 70%);
-    top: -15%; left: -10%;
-    animation-delay: 0s;
-  }
-  .bg-orbs::after {
-    width: 520px; height: 520px;
-    background: radial-gradient(circle, #38bdf8 0%, transparent 70%);
-    bottom: -18%; right: -12%;
-    animation-delay: -7s;
-  }
+body {
+  min-height: 100vh;
+  background: var(--bg-deep);
+  font-family: -apple-system, 'SF Pro Display', 'PingFang SC', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  color: var(--text-1);
+  display: flex; align-items: center; justify-content: center;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  cursor: default;
+  /* 全局微妙的纹理 */
+  background-image:
+    radial-gradient(ellipse 80% 60% at 30% 20%, rgba(108,92,231,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 70% 70%, rgba(56,189,248,0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 90%, rgba(244,114,182,0.06) 0%, transparent 55%);
+}
 
-  @keyframes orbDrift {
-    0%   { transform: translate(0, 0) scale(1); }
-    33%  { transform: translate(60px, -40px) scale(1.12); }
-    66%  { transform: translate(-30px, 50px) scale(0.92); }
-    100% { transform: translate(20px, -20px) scale(1.05); }
-  }
+/* ============================================================
+   BACKGROUND LAYER — DYNAMIC ORBS (iOS 26 style)
+   ============================================================ */
+.bg-layer {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none; overflow: hidden;
+}
+.orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.55;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+.orb-1 {
+  width: 55vmax; height: 55vmax;
+  background: radial-gradient(circle at 35% 35%, rgba(108,92,231,0.7) 0%, rgba(108,92,231,0) 65%);
+  top: -20%; left: -15%;
+  animation-name: orb1; animation-duration: 16s;
+}
+.orb-2 {
+  width: 45vmax; height: 45vmax;
+  background: radial-gradient(circle at 50% 50%, rgba(56,189,248,0.55) 0%, rgba(56,189,248,0) 65%);
+  bottom: -22%; right: -10%;
+  animation-name: orb2; animation-duration: 18s; animation-delay: -8s;
+}
+.orb-3 {
+  width: 35vmax; height: 35vmax;
+  background: radial-gradient(circle at 60% 40%, rgba(244,114,182,0.4) 0%, rgba(244,114,182,0) 65%);
+  top: 50%; left: 55%;
+  animation-name: orb3; animation-duration: 14s; animation-delay: -4s;
+}
+.orb-4 {
+  width: 30vmax; height: 30vmax;
+  background: radial-gradient(circle at 40% 60%, rgba(52,211,153,0.3) 0%, rgba(52,211,153,0) 65%);
+  top: 10%; right: 20%;
+  animation-name: orb4; animation-duration: 20s; animation-delay: -12s;
+}
 
-  /* ============ FLOATING PARTICLES ============ */
-  .particles {
-    position: fixed; inset: 0; z-index: 0;
-    pointer-events: none;
-  }
-  .particle {
-    position: absolute;
-    width: 4px; height: 4px;
-    background: rgba(255, 255, 255, 0.55);
-    border-radius: 50%;
-    animation: floatUp linear infinite;
-  }
-  @keyframes floatUp {
-    0%   { transform: translateY(0) translateX(0) scale(1);   opacity: 0; }
-    10%  { opacity: 1; }
-    90%  { opacity: 1; }
-    100% { transform: translateY(-110vh) translateX(40px) scale(0); opacity: 0; }
-  }
+@keyframes orb1 {
+  0% { transform: translate(0,0) scale(1) rotate(0deg); }
+  33% { transform: translate(8vmax, -5vmax) scale(1.08) rotate(2deg); }
+  66% { transform: translate(-3vmax, 6vmax) scale(0.94) rotate(-1deg); }
+  100% { transform: translate(4vmax, -2vmax) scale(1.03) rotate(1deg); }
+}
+@keyframes orb2 {
+  0% { transform: translate(0,0) scale(1) rotate(0deg); }
+  33% { transform: translate(-5vmax, -7vmax) scale(1.12) rotate(-2deg); }
+  66% { transform: translate(6vmax, 3vmax) scale(0.90) rotate(1deg); }
+  100% { transform: translate(2vmax, -4vmax) scale(1.06) rotate(-0.5deg); }
+}
+@keyframes orb3 {
+  0% { transform: translate(0,0) scale(1); }
+  50% { transform: translate(-7vmax, 5vmax) scale(1.15); }
+  100% { transform: translate(3vmax, -3vmax) scale(0.95); }
+}
+@keyframes orb4 {
+  0% { transform: translate(0,0) scale(1); }
+  50% { transform: translate(5vmax, -6vmax) scale(1.1); }
+  100% { transform: translate(-4vmax, 2vmax) scale(0.92); }
+}
 
-  /* ============ MAIN CARD ============ */
-  .wrapper {
-    position: relative; z-index: 1;
-    width: min(720px, 94vw);
-    display: flex; flex-direction: column; gap: 28px;
-    padding: 20px 0 40px;
-  }
+/* ============================================================
+   FLOATING PARTICLES WITH DEPTH
+   ============================================================ */
+.particle-layer {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  animation: float linear infinite;
+  will-change: transform, opacity;
+}
+.particle:nth-child(odd) {
+  background: rgba(200,210,255,0.45);
+  box-shadow: 0 0 6px rgba(180,190,255,0.3);
+}
+.particle:nth-child(3n) {
+  background: rgba(180,220,255,0.4);
+  box-shadow: 0 0 8px rgba(150,200,255,0.25);
+}
+@keyframes float {
+  0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  5%   { opacity: 0.8; }
+  85%  { opacity: 0.5; }
+  100% { transform: translateY(-115vh) translateX(60px) scale(0.2); opacity: 0; }
+}
 
-  /* ---------- glass card mixin ---------- */
-  .glass {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    box-shadow: var(--glass-shadow);
-    transition: var(--transition);
-  }
+/* ============================================================
+   GRID LINES — subtle tech feel
+   ============================================================ */
+.grid-overlay {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none; opacity: 0.025;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 70%);
+}
 
-  /* ============ HEADER / AVATAR ============ */
-  .hero {
-    display: flex; flex-direction: column; align-items: center; gap: 16px;
-    padding: 44px 32px 36px;
-    animation: fadeInUp 0.9s ease both;
-  }
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(36px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+/* ============================================================
+   MOUSE GLOW — follows cursor
+   ============================================================ */
+.cursor-glow {
+  position: fixed; z-index: 0; pointer-events: none;
+  width: 400px; height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(108,92,231,0.07) 0%, transparent 60%);
+  transform: translate(-50%, -50%);
+  transition: opacity 0.8s;
+  opacity: 0;
+}
+.cursor-glow.active { opacity: 1; }
 
-  .avatar-ring {
-    width: 110px; height: 110px;
-    border-radius: 50%;
-    padding: 3px;
-    background: conic-gradient(from 0deg, #7c5cfc, #38bdf8, #a78bfa, #7c5cfc);
-    animation: ringSpin 6s linear infinite;
-    box-shadow: 0 0 32px var(--accent-glow);
-  }
-  @keyframes ringSpin { to { transform: rotate(360deg); } }
-  .avatar {
-    width: 100%; height: 100%;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #1a1a2e, #16213e);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 44px;
-    color: #fff;
-    font-weight: 700;
-    letter-spacing: 1px;
-    user-select: none;
-  }
+/* ============================================================
+   MAIN CONTAINER
+   ============================================================ */
+.main {
+  position: relative; z-index: 1;
+  width: min(700px, 93vw);
+  display: flex; flex-direction: column; gap: 24px;
+  padding: 16px 0 48px;
+}
 
-  .name {
-    font-size: 36px; font-weight: 800; letter-spacing: 2px;
-    background: linear-gradient(135deg, #e0e7ff, #a5b4fc, #7dd3fc);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: shimmer 3s ease-in-out infinite;
-  }
-  @keyframes shimmer {
-    0%, 100% { filter: brightness(1); }
-    50%      { filter: brightness(1.25); }
-  }
+/* ============================================================
+   LIQUID GLASS CARD — THE CORE
+   ============================================================ */
+.glass {
+  position: relative;
+  background: var(--liquid-bg);
+  border: 1px solid var(--liquid-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    inset 0 -1px 0 rgba(0,0,0,0.1);
+  transition: all 0.5s var(--ease-ios);
+  overflow: hidden;
+}
 
-  .tagline {
-    font-size: 17px; color: var(--text-secondary);
-    letter-spacing: 4px; font-weight: 400;
-    opacity: 0.85;
-  }
+/* 液态玻璃高光边缘 */
+.glass::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.06) 0%,
+    rgba(255,255,255,0.02) 30%,
+    rgba(255,255,255,0) 50%,
+    rgba(255,255,255,0.03) 70%,
+    rgba(255,255,255,0.06) 100%
+  );
+  pointer-events: none;
+}
 
-  .bio {
-    margin-top: 4px;
-    font-size: 15px; color: #9090a8;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .bio .cursor {
-    display: inline-block; width: 2px; height: 18px;
-    background: var(--accent);
-    animation: blink 0.8s step-end infinite;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
+/* 底部反光 */
+.glass::after {
+  content: '';
+  position: absolute; bottom: 0; left: 10%; right: 10%; height: 1px; z-index: 1;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  pointer-events: none;
+}
 
-  /* ============ WORKS SECTION ============ */
-  .works {
-    padding: 32px;
-    animation: fadeInUp 0.9s ease 0.15s both;
-    display: flex; flex-direction: column; gap: 20px;
-  }
-  .section-title {
-    font-size: 13px; text-transform: uppercase;
-    letter-spacing: 6px; color: #707088;
-    font-weight: 600;
-  }
+.glass > * { position: relative; z-index: 2; }
 
-  .project-card {
-    display: flex; align-items: center; gap: 20px;
-    padding: 24px;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    transition: var(--transition);
-    text-decoration: none;
-    color: inherit;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-  }
-  .project-card::before {
-    content: '';
-    position: absolute; inset: 0;
-    background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%),
-                rgba(124, 92, 252, 0.12), transparent 50%);
-    opacity: 0; transition: opacity 0.35s;
-    pointer-events: none; z-index: 0;
-  }
-  .project-card:hover::before { opacity: 1; }
-  .project-card:hover {
-    border-color: rgba(255, 255, 255, 0.22);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), 0 0 60px rgba(124, 92, 252, 0.15);
-    transform: translateY(-3px);
-  }
+/* hover 增强 */
+.glass.interactive:hover {
+  border-color: var(--liquid-border-bright);
+  box-shadow:
+    0 16px 48px rgba(0,0,0,0.3),
+    0 0 0 1px rgba(255,255,255,0.05),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+  transform: translateY(-2px);
+}
 
-  .project-icon {
-    flex-shrink: 0;
-    width: 60px; height: 60px;
-    border-radius: 18px;
-    background: linear-gradient(135deg, #1e1e3a, #2a2a4a);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px;
-    position: relative; z-index: 1;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-  }
-  .project-info { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 6px; }
-  .project-name {
-    font-size: 20px; font-weight: 700;
-    background: linear-gradient(135deg, #e2e8f0, #94a3b8);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .project-desc { font-size: 14px; color: #808898; line-height: 1.6; }
+/* ============================================================
+   HERO SECTION
+   ============================================================ */
+.hero {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  padding: 48px 36px 40px;
+  animation: cardIn 0.9s var(--spring-soft) both;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(40px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 
-  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
-  .badge {
-    font-size: 11px; font-weight: 600;
-    padding: 4px 12px; border-radius: 99px;
-    background: rgba(124, 92, 252, 0.15);
-    color: #b4a9f6;
-    border: 1px solid rgba(124, 92, 252, 0.25);
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-  }
-  .badge.ai    { background: rgba(56, 189, 248, 0.13); color: #7dd3fc; border-color: rgba(56, 189, 248, 0.25); }
-  .badge.oss   { background: rgba(74, 222, 128, 0.13); color: #86efac; border-color: rgba(74, 222, 128, 0.25); }
-  .badge.web   { background: rgba(251, 146, 60, 0.13); color: #fdba74; border-color: rgba(251, 146, 60, 0.25); }
+/* --- Avatar --- */
+.avatar-wrap {
+  position: relative;
+  width: 120px; height: 120px;
+}
+/* 旋转光环 */
+.avatar-ring {
+  position: absolute; inset: -5px; border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #6c5ce7, #38bdf8, #a78bfa, #f472b6, #6c5ce7
+  );
+  animation: ringSpin 7s linear infinite;
+  filter: blur(2px);
+  opacity: 0.9;
+}
+.avatar-ring::after {
+  content: '';
+  position: absolute; inset: 3px; border-radius: 50%;
+  background: var(--bg-deep);
+}
+@keyframes ringSpin { to { transform: rotate(360deg); } }
 
-  .arrow {
-    position: relative; z-index: 1;
-    margin-left: auto;
-    font-size: 22px; color: #505068;
-    transition: var(--transition);
-  }
-  .project-card:hover .arrow { color: #a5b4fc; transform: translateX(5px); }
+.avatar-inner {
+  position: relative; z-index: 1;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #1e1e38, #141428);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 50px;
+  box-shadow:
+    inset 0 2px 8px rgba(255,255,255,0.06),
+    0 8px 32px rgba(0,0,0,0.4),
+    0 0 60px rgba(108,92,231,0.25);
+  user-select: none;
+  transition: transform 0.6s var(--spring-soft);
+}
+.avatar-wrap:hover .avatar-inner {
+  transform: scale(1.06);
+}
 
-  /* ============ FOOTER / LINKS ============ */
-  .socials {
-    display: flex; justify-content: center; gap: 16px;
-    padding: 20px;
-    animation: fadeInUp 0.9s ease 0.3s both;
-  }
-  .social-dot {
-    width: 44px; height: 44px; border-radius: 50%;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    color: #808898;
-    transition: var(--transition);
-    cursor: pointer; text-decoration: none;
-  }
-  .social-dot:hover {
-    color: #fff;
-    border-color: rgba(255,255,255,0.3);
-    box-shadow: 0 0 24px var(--accent-glow);
-    transform: translateY(-4px);
-  }
+/* status dot */
+.status-dot {
+  position: absolute; bottom: 6px; right: 6px; z-index: 3;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #34d399;
+  border: 3px solid var(--bg-deep);
+  box-shadow: 0 0 12px rgba(52,211,153,0.6);
+  animation: pulse-dot 2.5s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 8px rgba(52,211,153,0.5); }
+  50%      { box-shadow: 0 0 20px rgba(52,211,153,0.9), 0 0 40px rgba(52,211,153,0.3); }
+}
 
-  /* ============ RESPONSIVE ============ */
-  @media (max-width: 600px) {
-    .hero { padding: 32px 20px 28px; }
-    .name { font-size: 28px; }
-    .project-card { flex-direction: column; align-items: flex-start; gap: 14px; }
-    .arrow { margin-left: 0; align-self: flex-end; margin-top: -40px; }
-  }
+/* --- Name --- */
+.name {
+  font-size: 38px; font-weight: 800; letter-spacing: 1px;
+  background: linear-gradient(160deg, #f0f0ff 0%, #c4b5fd 30%, #7dd3fc 60%, #e0e7ff 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: nameShimmer 4s ease-in-out infinite;
+}
+@keyframes nameShimmer {
+  0%, 100% { background-position: 0% 50%; filter: brightness(1); }
+  50%      { background-position: 100% 50%; filter: brightness(1.2); }
+}
+
+.tagline {
+  font-size: 16px; font-weight: 500;
+  letter-spacing: 5px; text-transform: uppercase;
+  color: var(--text-3);
+  opacity: 0.8;
+}
+
+/* --- Typing Bio --- */
+.bio-line {
+  margin-top: 2px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; color: var(--text-2);
+  min-height: 22px;
+}
+.bio-cursor {
+  display: inline-block;
+  width: 2.5px; height: 19px;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: cursorBlink 0.7s step-end infinite;
+  box-shadow: 0 0 8px rgba(108,92,231,0.6);
+}
+@keyframes cursorBlink { 50% { opacity: 0; } }
+
+/* --- Stats Row --- */
+.stats-row {
+  display: flex; gap: 28px; margin-top: 8px;
+}
+.stat-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.stat-num {
+  font-size: 22px; font-weight: 700;
+  background: linear-gradient(135deg, #c4b5fd, #7dd3fc);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--text-3);
+}
+
+/* ============================================================
+   WORKS SECTION
+   ============================================================ */
+.works-section {
+  padding: 28px 30px;
+  animation: cardIn 0.9s var(--spring-soft) 0.12s both;
+}
+
+.section-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 22px;
+}
+.section-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent2);
+  box-shadow: 0 0 10px rgba(56,189,248,0.7);
+  animation: dotPulse 2s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50%      { transform: scale(1.6); opacity: 1; }
+}
+.section-label {
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 5px;
+  color: var(--text-3);
+}
+
+/* Project Cards */
+.project-list {
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.project-card {
+  display: flex; align-items: center; gap: 18px;
+  padding: 20px 22px;
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.07);
+  text-decoration: none; color: inherit;
+  cursor: pointer;
+  position: relative; overflow: hidden;
+  transition: all 0.45s var(--spring);
+  animation: cardIn 0.7s var(--spring-soft) calc(0.2s + var(--i, 0) * 0.08s) both;
+}
+.project-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(500px circle at var(--mx, 50%) var(--my, 50%),
+              rgba(108,92,231,0.1), transparent 60%);
+  opacity: 0; transition: opacity 0.4s;
+  pointer-events: none; z-index: 0;
+}
+.project-card:hover::before { opacity: 1; }
+.project-card:hover {
+  border-color: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 80px rgba(108,92,231,0.08);
+  transform: translateY(-3px) scale(1.015);
+}
+.project-card:active {
+  transform: translateY(-1px) scale(0.99);
+  transition: all 0.1s var(--ease-ios);
+}
+
+.project-icon {
+  flex-shrink: 0; z-index: 1;
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(108,92,231,0.2), rgba(56,189,248,0.15));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  transition: all 0.4s var(--ease-ios);
+}
+.project-card:hover .project-icon {
+  box-shadow: 0 4px 24px rgba(108,92,231,0.25);
+  transform: scale(1.05);
+}
+
+.project-info { z-index: 1; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.project-name {
+  font-size: 19px; font-weight: 700;
+  background: linear-gradient(135deg, #e8e8f5, #b0b8d0);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.project-desc { font-size: 13.5px; color: var(--text-3); line-height: 1.5; }
+
+.badges { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 3px; }
+.badge {
+  font-size: 10.5px; font-weight: 600;
+  padding: 3px 10px; border-radius: 20px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.badge.purple { background: rgba(108,92,231,0.15); color: #c4b5fd; border: 1px solid rgba(108,92,231,0.2); }
+.badge.blue   { background: rgba(56,189,248,0.12); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.2); }
+.badge.green  { background: rgba(52,211,153,0.12); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.2); }
+.badge.orange { background: rgba(244,114,182,0.12); color: #f9a8d4; border: 1px solid rgba(244,114,182,0.2); }
+
+.arrow-icon {
+  z-index: 1; flex-shrink: 0;
+  font-size: 20px; color: var(--text-3);
+  transition: all 0.4s var(--spring);
+}
+.project-card:hover .arrow-icon {
+  color: var(--accent2);
+  transform: translateX(6px);
+}
+
+/* --- WORKS LINK BUTTON (iOS 26 style) --- */
+.works-link-wrap {
+  margin-top: 18px;
+  text-align: center;
+}
+.works-link {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 14px 32px;
+  border-radius: 100px;
+  background: linear-gradient(135deg, rgba(108,92,231,0.2), rgba(56,189,248,0.15));
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-1);
+  font-size: 15px; font-weight: 600;
+  letter-spacing: 1px;
+  text-decoration: none;
+  cursor: pointer;
+  position: relative; overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all 0.5s var(--spring);
+  box-shadow: 0 4px 20px rgba(108,92,231,0.12);
+}
+.works-link::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent 60%);
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.works-link::after {
+  content: '';
+  position: absolute; inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(108,92,231,0.5), rgba(56,189,248,0.4), rgba(244,114,182,0.3));
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.4s;
+  filter: blur(12px);
+}
+.works-link:hover {
+  transform: translateY(-3px) scale(1.03);
+  border-color: rgba(255,255,255,0.25);
+  box-shadow: 0 12px 40px rgba(108,92,231,0.3), 0 0 80px rgba(56,189,248,0.2);
+}
+.works-link:hover::after { opacity: 0.7; }
+.works-link:active {
+  transform: translateY(0) scale(0.97);
+  transition: all 0.12s var(--ease-ios);
+}
+
+.works-link-arrow {
+  display: inline-block;
+  font-size: 18px;
+  transition: transform 0.4s var(--spring);
+}
+.works-link:hover .works-link-arrow {
+  transform: translateX(4px);
+}
+
+.works-link-sparkle {
+  position: absolute;
+  width: 6px; height: 6px;
+  background: #fff;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: sparkle 1.2s ease-out forwards;
+  opacity: 0;
+}
+@keyframes sparkle {
+  0% { transform: translate(0,0) scale(0); opacity: 1; }
+  100% { transform: translate(var(--sx), var(--sy)) scale(1.2); opacity: 0; }
+}
+
+/* ============================================================
+   SOCIALS
+   ============================================================ */
+.socials {
+  display: flex; justify-content: center; gap: 14px;
+  padding: 8px 0;
+  animation: cardIn 0.9s var(--spring-soft) 0.24s both;
+}
+.social-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: var(--liquid-bg);
+  border: 1px solid var(--liquid-border);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-2);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.45s var(--spring);
+  position: relative; overflow: hidden;
+}
+.social-btn::after {
+  content: '';
+  position: absolute; inset: 0; border-radius: inherit;
+  background: radial-gradient(circle at 50% 50%, rgba(108,92,231,0.3), transparent);
+  opacity: 0; transition: opacity 0.4s;
+}
+.social-btn:hover {
+  color: #fff;
+  border-color: rgba(255,255,255,0.28);
+  box-shadow: 0 8px 28px rgba(108,92,231,0.3), 0 0 40px rgba(108,92,231,0.12);
+  transform: translateY(-5px) scale(1.08);
+}
+.social-btn:hover::after { opacity: 1; }
+.social-btn:active {
+  transform: translateY(0) scale(0.94);
+  transition: all 0.1s var(--ease-ios);
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+  text-align: center;
+  font-size: 12px; color: var(--text-3);
+  letter-spacing: 2px;
+  opacity: 0.5;
+  animation: cardIn 0.9s var(--spring-soft) 0.3s both;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+  .hero { padding: 36px 20px 30px; }
+  .name { font-size: 30px; }
+  .works-section { padding: 22px 18px; }
+  .project-card { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px; }
+  .arrow-icon { position: absolute; right: 18px; top: 18px; }
+  .stats-row { gap: 20px; }
+}
+
+/* ============================================================
+   SCROLLBAR (subtle)
+   ============================================================ */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 20px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+
+/* ============================================================
+   SELECTION
+   ============================================================ */
+::selection {
+  background: rgba(108,92,231,0.35);
+  color: #fff;
+}
 </style>
 </head>
 <body>
 
-<!-- animated background -->
-<div class="bg-orbs"></div>
-<div class="particles" id="particles"></div>
+<!-- BACKGROUND EFFECTS -->
+<div class="bg-layer">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="orb orb-4"></div>
+</div>
+<div class="grid-overlay"></div>
+<div class="particle-layer" id="particleLayer"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
 
-<main class="wrapper">
+<!-- MAIN CONTENT -->
+<main class="main">
 
   <!-- HERO -->
   <section class="hero glass">
-    <div class="avatar-ring">
-      <div class="avatar">🐟</div>
+    <div class="avatar-wrap">
+      <div class="avatar-ring"></div>
+      <div class="avatar-inner">
+        <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2C8 2 4 6 4 10c0 3 2 5 4 6l-1 4c0 0 3-1 5-2s5 2 5 2l-1-4c2-1 4-3 4-6 0-4-4-8-8-8z"/>
+          <circle cx="9" cy="9" r="1.5" fill="rgba(255,255,255,0.7)"/>
+          <circle cx="14" cy="9" r="1.5" fill="rgba(255,255,255,0.7)"/>
+          <path d="M9 13c1 1.5 3 2 5 1" stroke="rgba(255,255,255,0.5)" stroke-width="0.8"/>
+        </svg>
+      </div>
+      <div class="status-dot"></div>
     </div>
+
     <h1 class="name">xiaoy_ovo</h1>
-    <p class="tagline">/ 睡 觉 选 手 /</p>
-    <p class="bio">
-      <span id="typing-text"></span><span class="cursor"></span>
-    </p>
+    <p class="tagline">开源主义 · 懒 · 写代码</p>
+
+    <div class="bio-line">
+      <span id="typingOutput"></span>
+      <span class="bio-cursor"></span>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <span class="stat-num" data-count="42">0</span>
+        <span class="stat-label">Repos</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num" data-count="3">0</span>
+        <span class="stat-label">Years</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num" data-count="∞">∞</span>
+        <span class="stat-label">Coffee</span>
+      </div>
+    </div>
   </section>
 
   <!-- WORKS -->
-  <section class="works glass">
-    <span class="section-title">✦ Works</span>
+  <section class="works-section glass interactive">
+    <div class="section-head">
+      <span class="section-dot"></span>
+      <span class="section-label">Works</span>
+    </div>
 
-    <a class="project-card" href="https://xiaoy-ovo.github.io/webide" target="_blank" rel="noopener">
-      <div class="project-icon">💻</div>
-      <div class="project-info">
-        <span class="project-name">WebIDE</span>
-        <p class="project-desc">浏览器里的全功能编辑器，AI 智能补全，写代码更丝滑。</p>
-        <div class="badge-row">
-          <span class="badge ai">🤖 AI 补全</span>
-          <span class="badge oss">🌟 开源</span>
-          <span class="badge web">🌐 网页即用</span>
+    <div class="project-list">
+      <a class="project-card" href="https://xiaoy-ovo.github.io/webide" target="_blank" rel="noopener" style="--i:0">
+        <div class="project-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(200,210,255,0.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="16" rx="2"/><path d="M6 6h12M6 10h8M6 14h5"/>
+          </svg>
         </div>
-      </div>
-      <span class="arrow">→</span>
-    </a>
+        <div class="project-info">
+          <span class="project-name">WebIDE</span>
+          <p class="project-desc">浏览器里的全功能编辑器，AI 智能补全，写代码更丝滑。</p>
+          <div class="badges">
+            <span class="badge purple">AI</span>
+            <span class="badge green">Open Source</span>
+            <span class="badge blue">Web</span>
+          </div>
+        </div>
+        <span class="arrow-icon">→</span>
+      </a>
+
+      <a class="project-card" href="https://github.com/xiaoy-ovo" target="_blank" rel="noopener" style="--i:1">
+        <div class="project-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(200,210,255,0.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+          </svg>
+        </div>
+        <div class="project-info">
+          <span class="project-name">More Projects</span>
+          <p class="project-desc">GitHub 上还有更多开源玩具，欢迎来逛逛。</p>
+          <div class="badges">
+            <span class="badge blue">GitHub</span>
+            <span class="badge orange">Side Project</span>
+          </div>
+        </div>
+        <span class="arrow-icon">→</span>
+      </a>
+    </div>
+
+    <!-- WORKS PAGE LINK -->
+    <div class="works-link-wrap">
+      <a class="works-link" href="https://xiaoy-ovo.github.io/works.html" id="worksBtn">
+        查看全部作品
+        <span class="works-link-arrow">→</span>
+      </a>
+    </div>
   </section>
 
   <!-- SOCIALS -->
   <div class="socials">
-    <a class="social-dot" href="https://github.com/xiaoy-ovo" target="_blank" rel="noopener" title="GitHub">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+    <a class="social-btn" href="https://github.com/xiaoy-ovo" target="_blank" rel="noopener" title="GitHub">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
     </a>
-    <a class="social-dot" href="mailto:xiaoy_ovo@outlook.com" title="Email">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 4-10 8L2 4"/></svg>
+    <a class="social-btn" href="mailto:xiaoy_ovo@outlook.com" title="Email">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <path d="m22 4-10 8L2 4"/>
+      </svg>
+    </a>
+    <a class="social-btn" href="https://twitter.com/xiaoy_ovo" target="_blank" rel="noopener" title="Twitter / X">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+      </svg>
     </a>
   </div>
+
+  <p class="footer">© 2026 xiaoy_ovo — Built with Love &amp; Open Source</p>
 
 </main>
 
 <script>
-  // ============ PARTICLES ============
-  const container = document.getElementById('particles');
-  for (let i = 0; i < 38; i++) {
+// ============================================================
+// iOS 26 LIQUID GLASS — PERSONAL PAGE SCRIPTS
+// ============================================================
+
+// --- PARTICLES ---
+(function spawnParticles() {
+  const layer = document.getElementById('particleLayer');
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < 55; i++) {
     const p = document.createElement('div');
-    p.classList.add('particle');
+    p.className = 'particle';
     p.style.left = Math.random() * 100 + '%';
-    p.style.animationDuration = (6 + Math.random() * 14) + 's';
-    p.style.animationDelay = Math.random() * 10 + 's';
-    p.style.width = p.style.height = (2 + Math.random() * 5) + 'px';
-    container.appendChild(p);
+    p.style.top = (60 + Math.random() * 40) + '%';
+    p.style.width = p.style.height = (1.5 + Math.random() * 5.5) + 'px';
+    p.style.animationDuration = (7 + Math.random() * 18) + 's';
+    p.style.animationDelay = Math.random() * 14 + 's';
+    p.style.opacity = (0.15 + Math.random() * 0.5);
+    frag.appendChild(p);
   }
+  layer.appendChild(frag);
+})();
 
-  // ============ TYPING ============
-  (function typeLoop() {
-    const el = document.getElementById('typing-text');
-    const phrases = ['一个很懒的人 💤', '写写代码，睡睡觉 🛌', '偶尔勤奋一下 ⚡', '大部分时间在摸鱼 🎣'];
-    let pi = 0, ci = 0, deleting = false;
-    function tick() {
-      const current = phrases[pi];
-      if (!deleting) {
-        el.textContent = current.slice(0, ci++);
-        if (ci > current.length) { deleting = true; return setTimeout(tick, 2200); }
-      } else {
-        el.textContent = current.slice(0, ci--);
-        if (ci < 0) { deleting = false; pi = (pi + 1) % phrases.length; ci = 0; return setTimeout(tick, 400); }
-      }
-      setTimeout(tick, deleting ? 35 : 70);
-    }
-    tick();
-  })();
+// --- CURSOR GLOW ---
+(function cursorGlow() {
+  const glow = document.getElementById('cursorGlow');
+  let active = false;
+  const onMove = (e) => {
+    glow.style.left = e.clientX + 'px';
+    glow.style.top = e.clientY + 'px';
+    if (!active) { glow.classList.add('active'); active = true; }
+  };
+  const onLeave = () => { glow.classList.remove('active'); active = false; };
+  document.addEventListener('mousemove', onMove, { passive: true });
+  document.addEventListener('mouseleave', onLeave);
+})();
 
-  // ============ PROJECT CARD MOUSE GLOW ============
+// --- PROJECT CARD LIGHT TRACKING ---
+(function cardGlow() {
   document.querySelectorAll('.project-card').forEach(card => {
-    card.addEventListener('mousemove', e => {
+    card.addEventListener('mousemove', (e) => {
       const r = card.getBoundingClientRect();
       card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
       card.style.setProperty('--my', (e.clientY - r.top) + 'px');
     });
   });
+})();
+
+// --- WORKS BUTTON SPARKLES ---
+(function worksSparkles() {
+  const btn = document.getElementById('worksBtn');
+  if (!btn) return;
+  btn.addEventListener('mousemove', (e) => {
+    const r = btn.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    const sparkle = document.createElement('div');
+    sparkle.className = 'works-link-sparkle';
+    sparkle.style.left = x + 'px';
+    sparkle.style.top = y + 'px';
+    sparkle.style.setProperty('--sx', (Math.random() - 0.5) * 60 + 'px');
+    sparkle.style.setProperty('--sy', (Math.random() - 0.5) * 60 + 'px');
+    btn.appendChild(sparkle);
+    sparkle.addEventListener('animationend', () => sparkle.remove());
+  });
+})();
+
+// --- TYPING ANIMATION (multi-phrase loop) ---
+(function typeLoop() {
+  const el = document.getElementById('typingOutput');
+  if (!el) return;
+  const phrases = [
+    '一个很懒的人',
+    '开源即是信仰',
+    '偶尔勤奋写代码',
+    '大部分时间在睡觉',
+    '永远热爱开源',
+  ];
+  let pi = 0, ci = 0, deleting = false;
+  function tick() {
+    const current = phrases[pi];
+    if (!deleting) {
+      el.textContent = current.slice(0, ci++);
+      if (ci > current.length) { deleting = true; return setTimeout(tick, 2400); }
+    } else {
+      el.textContent = current.slice(0, ci--);
+      if (ci < 0) { deleting = false; pi = (pi + 1) % phrases.length; ci = 0; return setTimeout(tick, 380); }
+    }
+    setTimeout(tick, deleting ? 30 : 65);
+  }
+  tick();
+})();
+
+// --- COUNT-UP ANIMATION (Intersection Observer) ---
+(function countUp() {
+  const nums = document.querySelectorAll('.stat-num[data-count]');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      const target = el.getAttribute('data-count');
+      if (target === '∞') { el.textContent = '∞'; return; }
+      const targetNum = parseInt(target, 10);
+      const duration = 1400;
+      const start = performance.now();
+      function update(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // ease-out
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.floor(eased * targetNum);
+        if (progress < 1) requestAnimationFrame(update);
+        else el.textContent = target;
+      }
+      requestAnimationFrame(update);
+      observer.unobserve(el);
+    });
+  }, { threshold: 0.6 });
+  nums.forEach(n => observer.observe(n));
+})();
+
+// --- PARALLAX ON ORBS (tilt effect) ---
+(function parallaxOrbs() {
+  const orbs = document.querySelectorAll('.orb');
+  document.addEventListener('mousemove', (e) => {
+    const x = (e.clientX / window.innerWidth - 0.5) * 2;
+    const y = (e.clientY / window.innerHeight - 0.5) * 2;
+    orbs.forEach((orb, i) => {
+      const depth = (i + 1) * 8;
+      orb.style.transform = `translate(${x * depth}px, ${y * depth}px)`;
+    });
+  }, { passive: true });
+})();
+
+// --- RANDOM SUBTLE CARD SHIMMER ---
+(function cardShimmer() {
+  const cards = document.querySelectorAll('.glass');
+  const animate = () => {
+    cards.forEach((card, i) => {
+      const delay = i * 0.7;
+      const intensity = 0.008 + Math.sin(Date.now() / 3000 + delay) * 0.004;
+      card.style.boxShadow = `
+        0 8px 32px rgba(0,0,0,0.2),
+        inset 0 1px 0 rgba(255,255,255,${0.05 + intensity}),
+        inset 0 -1px 0 rgba(0,0,0,0.1)
+      `;
+    });
+    requestAnimationFrame(() => requestAnimationFrame(animate));
+  };
+  requestAnimationFrame(animate);
+})();
+
+// --- SMOOTH SPRING-LIKE HOVER FOR ALL INTERACTIVE ELEMENTS ---
+// The CSS handles most of it, but we can add micro-interactions
+(function microInteractions() {
+  // Ripple effect on glass cards
+  document.querySelectorAll('.glass.interactive').forEach(card => {
+    card.addEventListener('click', function(e) {
+      // skip if clicking a link
+      if (e.target.closest('a')) return;
+      const ripple = document.createElement('div');
+      const r = this.getBoundingClientRect();
+      const size = Math.max(r.width, r.height);
+      ripple.style.cssText = `
+        position: absolute; z-index: 0;
+        width: ${size}px; height: ${size}px;
+        left: ${e.clientX - r.left - size/2}px;
+        top: ${e.clientY - r.top - size/2}px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+        pointer-events: none;
+        animation: rippleOut 0.8s ease-out forwards;
+      `;
+      this.appendChild(ripple);
+      ripple.addEventListener('animationend', () => ripple.remove());
+    });
+  });
+  // Inject ripple keyframe dynamically
+  const style = document.createElement('style');
+  style.textContent = '@keyframes rippleOut { to { transform: scale(2); opacity: 0; } }';
+  document.head.appendChild(style);
+})();
+
+console.log('xiaoy_ovo - Open Source - Keep It Simple');
+console.log('Built with liquid glass');
 </script>
 
 </body>
