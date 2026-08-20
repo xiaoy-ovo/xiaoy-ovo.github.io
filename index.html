@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>xiaoy's world</title>
+<script>
+(function () {
+  var ua = navigator.userAgent;
+  var isMobileUA = /Mobi|Android|iPhone|iPod|Windows Phone/i.test(ua);
+  var isTouch = navigator.maxTouchPoints > 1 || 'ontouchstart' in window;
+  var isSmall = window.innerWidth <= 900;
+  var isMobile = isMobileUA || (isTouch && isSmall);
+  document.documentElement.className = isMobile ? 'is-mobile' : 'is-desktop';
+})();
+</script>
 <link href="https://static-fonts-css.sxlcdn.com/css?family=ZCOOL+KuaiLe:regular&display=swap" rel="stylesheet">
 <style>
 /* ==================================================================
@@ -432,7 +442,7 @@ body.theme-doodle {
   gap: 20px;
   margin-top: 40px;
 }
-@media (max-width: 640px) { .d-note-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { html:not(.is-mobile):not(.is-desktop) .d-note-grid { grid-template-columns: 1fr; } }
 .d-note-card {
   background: #fffef8;
   border: 2px solid #d8cdb4;
@@ -701,6 +711,97 @@ body.theme-retro {
 .r-foot { color: #2a9d4f; border-top: 1px dashed #2a9d4f; font-size: 12px; letter-spacing: 1px; }
 .d-foot { font-size: 15px; color: #9c8f7d; letter-spacing: 0; }
 .d-foot .pink, .g-foot .pink { color: #ff00ff; }
+
+/* ==================================================================
+   移动端适配:JS 检测设备(is-mobile / is-desktop)
+   + 宽度兜底(JS 未运行时按窗口宽度)
+================================================================== */
+html.is-mobile .g-nav { padding: 12px 16px; }
+html.is-mobile .g-nav .nav-links { gap: 12px; font-size: 12px; }
+html.is-mobile .door-row { gap: 16px; }
+html.is-mobile .r-nav-inner { padding: 10px 16px; }
+html.is-mobile .d-paper { padding: 30px 24px; }
+
+/* 主世界 */
+html.is-mobile .g-nav { flex-wrap: wrap; gap: 8px; font-size: 12px; padding: 12px 14px; }
+html.is-mobile .g-nav .nav-links { gap: 10px; flex-wrap: wrap; }
+html.is-mobile .g-nav .nav-links a { letter-spacing: 1px; }
+html.is-mobile .g-section { padding: 60px 16px; }
+html.is-mobile .glitch { font-size: clamp(40px, 13vw, 64px); }
+html.is-mobile .g-sub { font-size: 15px; }
+html.is-mobile .door-row { flex-direction: column; width: 100%; max-width: 320px; }
+html.is-mobile .door-btn { width: 100%; text-align: center; }
+html.is-mobile .g-card-grid { grid-template-columns: 1fr; }
+html.is-mobile .g-link-box { min-width: 0; width: 100%; font-size: 19px; padding: 16px 20px; }
+html.is-mobile .datastream { max-width: 100%; }
+
+/* 日记本 */
+html.is-mobile .d-paper { padding: 24px 18px; }
+html.is-mobile .d-title { font-size: 34px !important; }
+html.is-mobile .d-tape-inner { padding: 0 12px; font-size: 13px; }
+html.is-mobile .d-note-grid { grid-template-columns: 1fr; }
+html.is-mobile .d-link-doodle { flex-wrap: wrap; font-size: 18px; }
+html.is-mobile .d-link-doodle .ld-go { margin-left: 0; }
+html.is-mobile .d-signature { font-size: 22px; }
+html.is-mobile .d-mood-box { padding: 20px 16px; }
+html.is-mobile .back-btn { font-size: 13px !important; padding: 8px 14px !important; }
+
+/* 终端 */
+html.is-mobile .r-body { padding: 20px 16px; }
+html.is-mobile .r-section { padding: 50px 14px; }
+html.is-mobile .r-cmd { font-size: 13px; }
+html.is-mobile .r-skill .s-name { width: 80px; font-size: 13px; }
+html.is-mobile .r-skill .s-pct { width: 44px; font-size: 12px; }
+html.is-mobile .r-ascii { font-size: 9px; }
+html.is-mobile .r-nav-inner { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+html.is-mobile .r-nav-inner > div { flex-wrap: wrap; gap: 12px; }
+html.is-mobile .r-link-box { padding: 14px 14px; font-size: 13px; flex-wrap: wrap; gap: 6px; }
+
+/* 启动画面 */
+html.is-mobile .boot-inner { font-size: 16px; line-height: 2.2; }
+html.is-mobile .boot-item { word-break: break-all; }
+
+/* 宽度兜底:JS 未加载时按窗口宽度 */
+@media (max-width: 900px) {
+  html:not(.is-mobile):not(.is-desktop) .g-nav { padding: 12px 16px; }
+  html:not(.is-mobile):not(.is-desktop) .g-nav .nav-links { gap: 12px; font-size: 12px; }
+  html:not(.is-mobile):not(.is-desktop) .door-row { gap: 16px; }
+  html:not(.is-mobile):not(.is-desktop) .r-nav-inner { padding: 10px 16px; }
+  html:not(.is-mobile):not(.is-desktop) .d-paper { padding: 30px 24px; }
+}
+@media (max-width: 640px) {
+  html:not(.is-mobile):not(.is-desktop) .g-nav { flex-wrap: wrap; gap: 8px; font-size: 12px; padding: 12px 14px; }
+  html:not(.is-mobile):not(.is-desktop) .g-nav .nav-links { gap: 10px; flex-wrap: wrap; }
+  html:not(.is-mobile):not(.is-desktop) .g-nav .nav-links a { letter-spacing: 1px; }
+  html:not(.is-mobile):not(.is-desktop) .g-section { padding: 60px 16px; }
+  html:not(.is-mobile):not(.is-desktop) .glitch { font-size: clamp(40px, 13vw, 64px); }
+  html:not(.is-mobile):not(.is-desktop) .g-sub { font-size: 15px; }
+  html:not(.is-mobile):not(.is-desktop) .door-row { flex-direction: column; width: 100%; max-width: 320px; }
+  html:not(.is-mobile):not(.is-desktop) .door-btn { width: 100%; text-align: center; }
+  html:not(.is-mobile):not(.is-desktop) .g-card-grid { grid-template-columns: 1fr; }
+  html:not(.is-mobile):not(.is-desktop) .g-link-box { min-width: 0; width: 100%; font-size: 19px; padding: 16px 20px; }
+  html:not(.is-mobile):not(.is-desktop) .datastream { max-width: 100%; }
+  html:not(.is-mobile):not(.is-desktop) .d-paper { padding: 24px 18px; }
+  html:not(.is-mobile):not(.is-desktop) .d-title { font-size: 34px !important; }
+  html:not(.is-mobile):not(.is-desktop) .d-tape-inner { padding: 0 12px; font-size: 13px; }
+  html:not(.is-mobile):not(.is-desktop) .d-note-grid { grid-template-columns: 1fr; }
+  html:not(.is-mobile):not(.is-desktop) .d-link-doodle { flex-wrap: wrap; font-size: 18px; }
+  html:not(.is-mobile):not(.is-desktop) .d-link-doodle .ld-go { margin-left: 0; }
+  html:not(.is-mobile):not(.is-desktop) .d-signature { font-size: 22px; }
+  html:not(.is-mobile):not(.is-desktop) .d-mood-box { padding: 20px 16px; }
+  html:not(.is-mobile):not(.is-desktop) .back-btn { font-size: 13px !important; padding: 8px 14px !important; }
+  html:not(.is-mobile):not(.is-desktop) .r-body { padding: 20px 16px; }
+  html:not(.is-mobile):not(.is-desktop) .r-section { padding: 50px 14px; }
+  html:not(.is-mobile):not(.is-desktop) .r-cmd { font-size: 13px; }
+  html:not(.is-mobile):not(.is-desktop) .r-skill .s-name { width: 80px; font-size: 13px; }
+  html:not(.is-mobile):not(.is-desktop) .r-skill .s-pct { width: 44px; font-size: 12px; }
+  html:not(.is-mobile):not(.is-desktop) .r-ascii { font-size: 9px; }
+  html:not(.is-mobile):not(.is-desktop) .r-nav-inner { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+  html:not(.is-mobile):not(.is-desktop) .r-nav-inner > div { flex-wrap: wrap; gap: 12px; }
+  html:not(.is-mobile):not(.is-desktop) .r-link-box { padding: 14px 14px; font-size: 13px; flex-wrap: wrap; gap: 6px; }
+  html:not(.is-mobile):not(.is-desktop) .boot-inner { font-size: 16px; line-height: 2.2; }
+  html:not(.is-mobile):not(.is-desktop) .boot-item { word-break: break-all; }
+}
 </style>
 </head>
 <body>
