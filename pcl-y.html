@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PCL-Y</title>
+<meta name="description" content="PCL-Y — Plain Craft Launcher 的二次分发定制版">
+<style>
+:root{
+  --bg:#0b0b0e;
+  --panel:#111114;
+  --panel-2:#16161a;
+  --line:rgba(255,255,255,.07);
+  --line-2:rgba(255,255,255,.11);
+  --tx:#eef1f4;
+  --tx-2:#8a9199;
+  --tx-3:#5b6169;
+  --ac:#00a1c2;
+  --ac-dim:rgba(0,161,194,.14);
+  --ac-line:rgba(0,161,194,.34);
+  --f:"Inter","Segoe UI Variable Text","Segoe UI",-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --m:"SF Mono","Cascadia Code",Consolas,ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--tx);font-family:var(--f);
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--ac);color:#fff}
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#2a2a30;border:3px solid var(--bg);border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#3a3a44}
+
+canvas#gl{position:fixed;inset:0;z-index:0;width:100%;height:100%;pointer-events:none}
+
+/* 英雄区：左文右星云 */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;padding:120px 0 60px}
+.hero-in{position:relative;z-index:2;max-width:560px}
+#nebula{position:absolute;inset:0;z-index:1;pointer-events:none}
+.hero::after{ /* 左侧压暗，保证文字可读 */
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(100deg,rgba(11,11,14,.92) 0%,rgba(11,11,14,.72) 26%,rgba(11,11,14,.18) 46%,transparent 60%);
+}
+
+.wrap{position:relative;z-index:1;width:min(1140px,calc(100% - 48px));margin:0 auto}
+
+/* ---- nav ---- */
+header{
+  position:sticky;top:0;z-index:50;
+  border-bottom:1px solid var(--line);
+  background:rgba(11,11,14,.8);backdrop-filter:blur(14px) saturate(1.4);
+}
+.nav{display:flex;align-items:center;height:58px;gap:32px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14.5px;letter-spacing:-.01em}
+.logo i{
+  width:22px;height:22px;border-radius:5px;background:var(--ac);
+  display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700;color:#04222a;
+  font-family:var(--m);
+}
+.menu{display:flex;gap:26px;margin-left:auto}
+.menu a{font-size:13.5px;color:var(--tx-2);transition:color .15s}
+.menu a:hover{color:var(--tx)}
+.menu a.on{color:var(--ac)}
+.nav-cta{
+  padding:7px 15px;border:1px solid var(--ac-line);border-radius:6px;
+  font-size:13.5px;font-weight:500;color:var(--ac);background:var(--ac-dim);
+  transition:background .15s,border-color .15s;
+}
+.nav-cta:hover{background:rgba(0,161,194,.22);border-color:var(--ac)}
+.burger{display:none;margin-left:auto;width:34px;height:34px;background:none;border:1px solid var(--line-2);border-radius:6px;color:var(--tx);cursor:pointer;font-size:15px}
+
+/* ---- hero ---- */
+.tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:12px;color:var(--tx-2);font-family:var(--m);
+  border:1px solid var(--line-2);border-radius:5px;padding:4px 10px;
+}
+.tag b{color:var(--ac);font-weight:500}
+h1{
+  margin-top:26px;
+  font-size:clamp(42px,8.2vw,88px);
+  font-weight:600;line-height:1.02;letter-spacing:-.04em;
+}
+h1 span{display:block;color:var(--tx-3);font-size:.34em;font-weight:500;letter-spacing:-.01em;margin-top:10px;line-height:1.25}
+.sub{margin-top:22px;max-width:520px;font-size:16.5px;color:var(--tx-2);line-height:1.65}
+.btns{display:flex;gap:10px;margin-top:34px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 21px;border-radius:7px;font-size:14.5px;font-weight:500;
+  border:1px solid transparent;cursor:pointer;transition:.16s;
+}
+.btn-p{background:var(--ac);color:#04222a}
+.btn-p:hover{background:#12b4d8}
+.btn-s{border-color:var(--line-2);color:var(--tx);background:transparent}
+.btn-s:hover{border-color:#333;background:rgba(255,255,255,.03)}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.hero-stat{
+  margin-top:52px;padding-top:26px;border-top:1px solid var(--line);
+  display:flex;gap:44px;flex-wrap:wrap;
+}
+.hs{display:flex;flex-direction:column;gap:3px}
+.hs b{font-size:30px;font-weight:600;letter-spacing:-.03em;color:var(--ac);font-family:var(--m)}
+.hs b em{font-size:15px;font-style:normal;font-weight:500}
+.hs i{font-style:normal;font-size:12.5px;color:var(--tx-3)}
+
+/* ---- sections ---- */
+section{padding:88px 0;border-top:1px solid var(--line)}
+.lab{
+  font-family:var(--m);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ac);margin-bottom:14px;
+}
+h2{font-size:clamp(26px,3.6vw,38px);font-weight:600;letter-spacing:-.03em;line-height:1.18;max-width:640px}
+.note{margin-top:14px;color:var(--tx-2);max-width:560px;font-size:15px}
+
+/* feature list — 极简，无卡片框 */
+.feat{display:flex;flex-direction:column;margin-top:52px;border-top:1px solid var(--line)}
+.frow{
+  display:grid;grid-template-columns:44px 1fr;gap:20px;
+  padding:26px 0;border-bottom:1px solid var(--line);
+  transition:background .15s;
+}
+.frow:hover{background:rgba(255,255,255,.012)}
+.frow .n{font-family:var(--m);font-size:12px;color:var(--tx-3);padding-top:4px}
+.frow h3{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.frow p{margin-top:7px;color:var(--tx-2);font-size:14.5px;max-width:620px}
+.frow .tags{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
+.frow .tags span{font-family:var(--m);font-size:11px;color:var(--tx-3);border:1px solid var(--line);border-radius:4px;padding:3px 7px}
+
+/* shot */
+.shot{margin-top:48px;border:1px solid var(--line-2);border-radius:10px;overflow:hidden;background:var(--panel)}
+.shot img{width:100%;display:block}
+.shot figcaption{padding:12px 16px;border-top:1px solid var(--line);font-size:13px;color:var(--tx-3);font-family:var(--m)}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;margin-top:48px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.step{background:var(--bg);padding:26px 22px}
+.step .n{font-family:var(--m);font-size:11.5px;color:var(--ac)}
+.step h3{margin-top:12px;font-size:15.5px;font-weight:600}
+.step p{margin-top:7px;color:var(--tx-2);font-size:14px}
+.step code{font-family:var(--m);font-size:12.5px;color:var(--tx-2);background:var(--panel-2);padding:1px 5px;border-radius:3px}
+
+/* faq */
+.faq{margin-top:48px;max-width:720px;border-top:1px solid var(--line)}
+details{border-bottom:1px solid var(--line)}
+summary{
+  padding:19px 0;cursor:pointer;list-style:none;
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  font-size:15px;font-weight:500;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--m);color:var(--tx-3);font-size:17px;transition:transform .2s;flex:0 0 auto}
+details[open] summary::after{transform:rotate(45deg);color:var(--ac)}
+details p{padding:0 0 20px;color:var(--tx-2);font-size:14.5px;max-width:640px}
+
+/* cta */
+.cta{padding:72px 0;text-align:center}
+.cta h2{max-width:none;margin-inline:auto}
+
+/* footer */
+footer{border-top:1px solid var(--line);padding:34px 0 40px}
+.frow2{display:flex;justify-content:space-between;align-items:flex-start;gap:28px;flex-wrap:wrap}
+footer small{font-size:12.5px;color:var(--tx-3);line-height:1.8}
+footer .lk{display:flex;gap:20px;font-size:12.5px;color:var(--tx-2)}
+footer .lk a:hover{color:var(--ac)}
+
+.rv{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease}
+.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+@media(max-width:820px){
+  .menu{display:none;position:absolute;top:58px;left:0;right:0;flex-direction:column;gap:0;
+    background:var(--bg);border-bottom:1px solid var(--line);padding:8px 24px}
+  .menu.open{display:flex}
+  .menu a{padding:11px 0;border-bottom:1px solid var(--line)}
+  .burger{display:block}
+  .nav-cta{display:none}
+  .hero-stat{gap:28px}
+  .frow{grid-template-columns:1fr;gap:8px}
+  .frow .n{padding-top:0}
+}
+</style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="#"><i>Y</i>PCL-Y</a>
+    <nav class="menu" id="menu">
+      <a href="#feat">功能</a>
+      <a href="#ui">界面</a>
+      <a href="#start">开始</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="nav-cta" href="https://github.com/xiaoy-ovo/pcl-y/releases" target="_blank" rel="noopener">下载</a>
+    <button class="burger" id="burger">☰</button>
+  </div>
+</header>
+
+<div class="wrap hero">
+  <canvas id="nebula"></canvas>
+  <div class="hero-in">
+    <span class="tag"><b>v1.2.0</b> · 稳定版可用</span>
+    <h1>PCL-Y<span>Plain Craft Launcher 定制版</span></h1>
+    <p class="sub">
+      在 PCL 稳定的内核之上，补上一键性能优化、皮肤库、游戏增强与实验性联机。
+      不重新造轮子，只把你每次都要手动做的事收进一次点击。
+    </p>
+    <div class="btns">
+      <a class="btn btn-p" href="https://github.com/xiaoy-ovo/pcl-y/releases" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        下载 1.2.0
+      </a>
+      <a class="btn btn-s" href="#feat">查看功能</a>
+    </div>
+
+    <div class="hero-stat">
+      <div class="hs"><b>-12<em>s</em></b><i>同配置启动耗时差</i></div>
+      <div class="hs"><b>6</b><i>内置增强模块</i></div>
+      <div class="hs"><b>45k+</b><i>行 VB.NET 内核</i></div>
+      <div class="hs"><b>2</b><i>CF 与 Modrinth 双源</i></div>
+    </div>
+  </div>
+</div>
+
+<section id="feat">
+  <div class="wrap">
+    <div class="rv">
+      <div class="lab">Features</div>
+      <h2>六个模块，都是点击即用</h2>
+      <p class="note">每一项都可以单独使用，互不影响。不需要额外配置，装完就能用。</p>
+    </div>
+
+    <div class="feat">
+      <div class="frow rv">
+        <div class="n">01</div>
+        <div>
+          <h3>一键性能优化</h3>
+          <p>自动分配内存、强制显卡高性能模式，并按你的加载器自动装入 Sodium / Lithium / Phosphor 优化模组。同配置下比原版 PCL2 启动快 12 秒。</p>
+          <div class="tags"><span>内存自动分配</span><span>独显强制</span><span>Sodium</span><span>Lithium</span><span>Phosphor</span></div>
+        </div>
+      </div>
+      <div class="frow rv">
+        <div class="n">02</div>
+        <div>
+          <h3>皮肤库</h3>
+          <p>浏览第三方皮肤库的海量皮肤，一键应用到当前账号。也支持自定义皮肤与微软账号在线更换。</p>
+          <div class="tags"><span>mcskins.org</span><span>一键应用</span><span>微软账号</span></div>
+        </div>
+      </div>
+      <div class="frow rv">
+        <div class="n">03</div>
+        <div>
+          <h3>游戏增强</h3>
+          <p>一键安装帧数显示与模组汉化模组。进游戏就能实时看到帧率，中文界面自动生效。</p>
+          <div class="tags"><span>FPS Display</span><span>i18n Update</span></div>
+        </div>
+      </div>
+      <div class="frow rv">
+        <div class="n">04</div>
+        <div>
+          <h3>实验性联机</h3>
+          <p>基于 EasyTier 的 P2P 组网。无需公网 IP 与端口映射，点一下按钮就能当房主或加入房间，数据在设备间直连传输。</p>
+          <div class="tags"><span>P2P</span><span>免端口映射</span><span>实验性</span></div>
+        </div>
+      </div>
+      <div class="frow rv">
+        <div class="n">05</div>
+        <div>
+          <h3>性能与统计</h3>
+          <p>累计游戏时长、CPU 与内存使用一目了然，并内置内存释放与 Intel 核显优化策略。</p>
+          <div class="tags"><span>内存释放</span><span>核显检测</span></div>
+        </div>
+      </div>
+      <div class="frow rv">
+        <div class="n">06</div>
+        <div>
+          <h3>持续更新</h3>
+          <p>跟随上游 PCL 的节奏同步代码，并加入 PCL-Y 自己的增强。GitHub Releases 一键检查与更新。</p>
+          <div class="tags"><span>跟随上游</span><span>自动更新</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="ui">
+  <div class="wrap">
+    <div class="rv">
+      <div class="lab">Interface</div>
+      <h2>熟悉的 PCL，多了一层</h2>
+      <p class="note">界面语言与交互习惯保持一致，你不需要重新学习什么.</p>
+    </div>
+
+    <figure class="shot rv">
+      <img src="assets/shots/more.png" alt="PCL-Y 更多页面" loading="lazy">
+      <figcaption>更多 — 联机、皮肤库、游戏增强、性能优化与统计</figcaption>
+    </figure>
+
+    <figure class="shot rv" style="margin-top:20px">
+      <img src="assets/shots/launch.png" alt="PCL-Y 启动与设置页面" loading="lazy">
+      <figcaption>启动 / 设置 — 启动选项、内存分配与个性化配置</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <div class="rv">
+      <div class="lab">Get started</div>
+      <h2>三步开始</h2>
+    </div>
+    <div class="steps">
+      <div class="step rv"><div class="n">STEP 01</div><h3>下载安装</h3><p>从 GitHub Releases 获取 <code>pcl-y-setup-1.2.0.msi</code>，双击安装。</p></div>
+      <div class="step rv"><div class="n">STEP 02</div><h3>准备游戏</h3><p>首次启动让你选择已有 PCL，或让 PCL-Y 自己下载安装 Java 与游戏本体。</p></div>
+      <div class="step rv"><div class="n">STEP 03</div><h3>点一次优化</h3><p>在「更多」里点开性能优化，剩下的交给它。想联机就把「联机」打开。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="rv">
+      <div class="lab">FAQ</div>
+      <h2>常见问题</h2>
+    </div>
+    <div class="faq">
+      <details class="rv"><summary>PCL-Y 和官方 PCL 有什么区别？</summary><p>PCL-Y 不修改 PCL 的核心逻辑，只在其上增加独立模块。你可以单独使用每个功能，也可以完全不用它们——它就是一个普通的 PCL。</p></details>
+      <details class="rv"><summary>会覆盖我现有的 PCL 数据吗？</summary><p>不会。PCL-Y 安装在独立目录与配置中，与已有 PCL 并存。实例与设置互不干扰。</p></details>
+      <details class="rv"><summary>联机功能安全吗？</summary><p>联机基于 EasyTier 的 P2P 组网，数据在设备之间直连传输，不经过中心服务器。但它仍是实验性功能，建议先在信任的网络里试用。</p></details>
+      <details class="rv"><summary>支持哪些系统？</summary><p>目前仅支持 Windows，基于 .NET Framework 4.8。安装包为简体中文 GBK。</p></details>
+      <details class="rv"><summary>怎么反馈问题？</summary><p>去 GitHub Issues 提 issue，附上启动器日志与复现步骤会更快被解决。</p></details>
+    </div>
+  </div>
+</section>
+
+<div class="wrap cta">
+  <h2 class="rv">开始使用 PCL-Y</h2>
+  <div class="btns rv" style="justify-content:center">
+    <a class="btn btn-p" href="https://github.com/xiaoy-ovo/pcl-y/releases" target="_blank" rel="noopener">前往 GitHub Releases</a>
+    <a class="btn btn-s" href="https://github.com/xiaoy-ovo/pcl-y" target="_blank" rel="noopener">源代码</a>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap frow2">
+    <small>
+      基于 Plain Craft Launcher 构建，遵循其分发许可。<br>
+      PCL-Y 代码公开，遵循对应开源协议.
+    </small>
+    <div class="lk">
+      <a href="https://github.com/xiaoy-ovo/pcl-y" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/xiaoy-ovo/pcl-y/issues" target="_blank" rel="noopener">Issues</a>
+      <a href="https://github.com/LTCatt/Plain-Craft-Launcher" target="_blank" rel="noopener">上游 PCL</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const m=document.getElementById('menu');
+document.getElementById('burger').onclick=()=>m.classList.toggle('open');
+
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}
+}),{threshold:.08,rootMargin:'0px 0px -6% 0px'});
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+
+const secs=[...document.querySelectorAll('section[id]')];
+const links=[...document.querySelectorAll('.menu a')];
+addEventListener('scroll',()=>{
+  const y=scrollY+120;let c='';
+  secs.forEach(s=>{if(s.offsetTop<=y)c=s.id});
+  links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+c));
+},{passive:true});
+</script>
+
+<script src="vendor/three.umd.js"></script>
+<script>
+/* three.js r160 —— 用户已授权 unpkg CDN 的 three@0.160.0
+   英雄区：螺旋星云（粒子沿对数螺旋旋进中心，鼠标靠近吸附）
+   滚过英雄区后：切到体素地形作为全站背景                        */
+(function(){
+const heroEl=document.querySelector('.hero');
+const cHero=document.getElementById('nebula');
+const cBody=document.getElementById('gl');
+
+const THREE=window.THREE;
+if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DPR=Math.min(devicePixelRatio,2);
+  const lerp=(a,b,t)=>a+(b-a)*t;
+
+  /* ================= 英雄区：螺旋星云 ================= */
+  // 圆点贴图：实心亮核 + 快速衰减到 0，保证小尺寸下依然可见
+  function dotTex(){
+    const c=document.createElement('canvas'); c.width=c.height=64;
+    const g=c.getContext('2d');
+    const gr=g.createRadialGradient(32,32,0,32,32,32);
+    gr.addColorStop(0,   'rgba(255,255,255,1)');
+    gr.addColorStop(.25, 'rgba(255,255,255,1)');
+    gr.addColorStop(.55, 'rgba(255,255,255,.55)');
+    gr.addColorStop(.8,  'rgba(255,255,255,.12)');
+    gr.addColorStop(1,   'rgba(255,255,255,0)');
+    g.fillStyle=gr; g.fillRect(0,0,64,64);
+    return new THREE.CanvasTexture(c);
+  }
+
+  const hScene=new THREE.Scene();
+  const hCam=new THREE.PerspectiveCamera(50,1,.1,200);
+  hCam.position.set(0,5.5,15);
+  hCam.lookAt(0,0,0);
+  const hR=new THREE.WebGLRenderer({canvas:cHero,antialias:true,alpha:true,powerPreference:'high-performance'});
+  hR.setPixelRatio(DPR);
+
+  // 背景星点（远处的静态星尘）
+  const BG=900, bgP=new Float32Array(BG*3);
+  for(let i=0;i<BG;i++){
+    bgP[i*3]=(Math.random()-.5)*120;
+    bgP[i*3+1]=(Math.random()-.5)*70;
+    bgP[i*3+2]=-8-Math.random()*40;
+  }
+  const bgG=new THREE.BufferGeometry();
+  bgG.setAttribute('position',new THREE.BufferAttribute(bgP,3));
+  hScene.add(new THREE.Points(bgG,new THREE.PointsMaterial({
+    color:0xa8c8e0,size:.14,transparent:true,opacity:.5,depthWrite:false,sizeAttenuation:true})));
+
+  // 螺旋星系粒子
+  const N=16000;
+  const pos=new Float32Array(N*3);
+  const base=new Float32Array(N*3);   // 螺旋上的"家"位置
+  const col=new Float32Array(N*3);
+  const spin=new Float32Array(N);
+  const c1=new THREE.Color(0xffffff), c2=new THREE.Color(0x7fe6ff),
+        c3=new THREE.Color(0xc9a6ff), c4=new THREE.Color(0x9dffc8);
+  const tmp=new THREE.Color();
+
+  // 参数化螺线：TW=总缠绕圈数，RMAX=最外半径
+  const TW=2.8, RMAX=8.2, RMIN=0.9;
+  const K=TW*Math.PI*2/(RMAX-RMIN);   // 每单位半径的角度增量 → 保证刚好 TW 圈
+
+  for(let i=0;i<N;i++){
+    // 沿螺线均匀取 t（0=中心 → 1=外缘），再抖动 → 每圈粒子数一致
+    let t=Math.pow(Math.random(),0.75);       // 略偏外缘
+    // 少量粒子脱离螺线，撒在外围做"散星"
+    const loose=Math.random()<.12;
+    const r = RMIN + t*(RMAX-RMIN);
+
+    // ★ 核心：角度随半径线性增长 → 这就是螺线
+    const armOff = (i%2)*Math.PI;             // 2 条主臂，对臂
+    const jitter = (Math.random()-.5) * (.10 + t*.55);  // 抖动随半径变宽
+    const theta = (r-RMIN)*K + armOff + jitter;
+
+    // 垂直厚度：中心薄、外缘厚（盘状）
+    const y = (Math.random()-.5) * (.10 + t*1.5);
+
+    base[i*3]=Math.cos(theta)*r;
+    base[i*3+1]=y;
+    base[i*3+2]=Math.sin(theta)*r*.55;   // z 压缩 → 斜视
+
+    if(loose){
+      // 散星：脱离螺线，随机撒在更外圈
+      const a=Math.random()*Math.PI*2;
+      const rr=RMAX*(.75+Math.random()*.6);
+      base[i*3]=Math.cos(a)*rr;
+      base[i*3+1]=(Math.random()-.5)*2.2;
+      base[i*3+2]=Math.sin(a)*rr*.55;
+    }
+
+    pos[i*3]=base[i*3]; pos[i*3+1]=base[i*3+1]; pos[i*3+2]=base[i*3+2];
+
+    // 颜色：核心白 → 青 → 淡紫 → 薄荷
+    const rr=Math.min(1,r/RMAX);
+    if(rr<.14) tmp.copy(c1).lerp(c2,Math.random()*.45);
+    else if(rr<.45) tmp.copy(c2).lerp(c3,Math.random()*.5);
+    else tmp.copy(c3).lerp(c4,Math.random()*.55);
+    const b=.85+Math.random()*.15;
+    col[i*3]=tmp.r*b; col[i*3+1]=tmp.g*b; col[i*3+2]=tmp.b*b;
+
+    spin[i]=Math.random()*6.28;
+    // 粒子大小：核心细密、外缘略大
+  }
+
+  const pG=new THREE.BufferGeometry();
+  pG.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  pG.setAttribute('color',new THREE.BufferAttribute(col,3));
+
+  // 纯内置 PointsMaterial，不做任何 shader 注入 —— 这条路径已被证实能出图
+  const pM=new THREE.PointsMaterial({
+    size:2.1,                          // 固定像素大小
+    sizeAttenuation:false,             // 关掉透视衰减，避免远处粒子缩到 0
+    vertexColors:true,
+    transparent:true, opacity:1,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false,
+    map:dotTex()
+  });
+  const pts=new THREE.Points(pG,pM);
+
+  // 中心亮核
+  const core=new THREE.Mesh(
+    new THREE.SphereGeometry(.85,32,24),
+    new THREE.ShaderMaterial({
+      transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+      uniforms:{t:{value:0}},
+      vertexShader:`varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+      fragmentShader:`varying vec3 vN;uniform float t;
+        void main(){
+          float f=pow(1.-abs(vN.z),2.2);
+          vec3 c=mix(vec3(.55,.92,1.),vec3(1.,.97,.92),f);
+          gl_FragColor=vec4(c,f*.85);
+        }`
+    })
+  );
+
+  // 外层辉光
+  const halo=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:dotTex(),color:0x9fe8ff,transparent:true,opacity:.75,
+    blending:THREE.AdditiveBlending,depthWrite:false}));
+  halo.scale.set(6.5,6.5,1);
+
+  // 星云整体装进 group：靠位移把它推到画面右侧，给左边文字让位
+  const neb=new THREE.Group();
+  neb.add(pts); neb.add(core); neb.add(halo);
+  hScene.add(neb);
+
+  /* 鼠标吸附：把指针射线投影到星云平面，得到准确的世界坐标 */
+  const mouse=new THREE.Vector2(0,0);       // 归一化 -1~1
+  const mTarget=new THREE.Vector3();
+  const ray=new THREE.Raycaster();
+  // 盘面法线（星系盘大致在 y=0，法线朝相机倾斜），比 y=0 水平面更贴合
+  const hitPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+  const hitPoint=new THREE.Vector3();
+  let mouseActive=false;
+  let mouseLerp=0;                          // 0→松开，1→完全吸住
+
+  heroEl.addEventListener('pointermove',e=>{
+    const r=heroEl.getBoundingClientRect();
+    mouse.set(
+      ((e.clientX-r.left)/r.width)*2-1,
+      -((e.clientY-r.top)/r.height)*2+1
+    );
+    mouseActive=true;
+  });
+  heroEl.addEventListener('pointerleave',()=>{mouseActive=false});
+
+  function sizeHero(){
+    const w=heroEl.clientWidth,h=heroEl.clientHeight;
+    hCam.aspect=w/h; hCam.updateProjectionMatrix(); hR.setSize(w,h,false);
+    // 按相机可视范围换算，把星云放到画面右侧、与文字不重叠
+    const halfH=hCam.position.z*Math.tan(hCam.fov*Math.PI/360);
+    const halfW=halfH*(w/h);
+    const wantR=halfH*1.05;          // 半径：略大于可视半高，粒子溢出边缘更有纵深
+    const sc=wantR/RMAX;
+    neb.scale.setScalar(sc);
+    neb.position.x = w>900 ? halfW-sc*RMAX*1.02 : 0;   // 中心落在可视半宽的 ~48% 处
+    neb.position.y = halfH*0.22;                        // 略高于中线
+    neb.position.y = halfH*0.22;                        // 略高于中线
+  }
+  sizeHero();
+
+
+  /* ================= 下方：体素地形 ================= */
+  const bScene=new THREE.Scene();
+  bScene.fog=new THREE.Fog(0x0b0b0e,10,30);
+  const bCam=new THREE.PerspectiveCamera(52,1,.1,100);
+  const bR=new THREE.WebGLRenderer({canvas:cBody,antialias:true,alpha:true,powerPreference:'high-performance'});
+  bR.setPixelRatio(DPR);
+
+  const S=40,C=0.6,H=new Float32Array(S*S);
+  for(let z=0;z<S;z++)for(let x=0;x<S;x++){
+    const u=x/S,v=z/S;
+    let h=Math.sin(u*Math.PI*2.9)*.5+Math.cos(v*Math.PI*2.2)*.38
+          +Math.sin((u+v)*Math.PI*3.7)*.2+Math.cos((u-v)*Math.PI*1.8)*.26;
+    const dx=(u-.5)*2,dz=(v-.5)*2;
+    h-=Math.pow(Math.max(Math.abs(dx),Math.abs(dz)),2.2)*1.5;
+    H[z*S+x]=h;
+  }
+  const blocks=[];
+  for(let z=0;z<S;z++)for(let x=0;x<S;x++){
+    const h=H[z*S+x],n=Math.max(1,Math.round((h+1.3)*1.9));
+    for(let k=0;k<n;k++){
+      const nz=((x*73856093)^(z*19349663))%997/997;
+      let col;
+      if(h>.6) col=new THREE.Color().setHSL(.42,.16,.13+nz*.05);
+      else if(h>.28) col=new THREE.Color().setHSL(.52,.10,.11+nz*.04);
+      else col=new THREE.Color().setHSL(.55,.14,.085+nz*.03);
+      blocks.push({x,z,y:k*C,c:col.clone().multiplyScalar(.55+(k/n)*.55)});
+    }
+  }
+  const inst=new THREE.InstancedMesh(
+    new THREE.BoxGeometry(C,C,C),
+    new THREE.MeshStandardMaterial({roughness:.95,metalness:0,flatShading:true}),blocks.length);
+  const m4=new THREE.Matrix4(),ox=-((S-1)*C)/2,oz=-((S-1)*C)/2;
+  blocks.forEach((b,i)=>{
+    m4.makeTranslation(ox+b.x*C,b.y,oz+b.z*C);
+    inst.setMatrixAt(i,m4); inst.setColorAt(i,b.c);
+  });
+  inst.instanceMatrix.needsUpdate=true;
+  if(inst.instanceColor)inst.instanceColor.needsUpdate=true;
+  bScene.add(inst);
+
+  const IS=70;
+  const isles=new THREE.InstancedMesh(
+    new THREE.BoxGeometry(1,1,1),
+    new THREE.MeshStandardMaterial({roughness:.95,metalness:0,flatShading:true}),IS);
+  for(let i=0;i<IS;i++){
+    const a=Math.random()*6.28,rad=3.5+Math.random()*10,s=.14+Math.random()*.4;
+    m4.makeScale(s,s,s).setPosition(Math.cos(a)*rad,1.5+Math.random()*7-Math.min(rad/13.5,1),Math.sin(a)*rad*.55-3);
+    isles.setMatrixAt(i,m4);
+    isles.setColorAt(i,new THREE.Color().setHSL(.5+Math.random()*.08,.18,.1+Math.random()*.09));
+  }
+  isles.instanceMatrix.needsUpdate=true;
+  if(isles.instanceColor)isles.instanceColor.needsUpdate=true;
+  bScene.add(isles);
+
+  const PN=380,pp=new Float32Array(PN*3),sd=new Float32Array(PN);
+  for(let i=0;i<PN;i++){
+    pp[i*3]=(Math.random()-.5)*32; pp[i*3+1]=Math.random()*10-.5; pp[i*3+2]=(Math.random()-.5)*24-3;
+    sd[i]=Math.random()*6.28;
+  }
+  const pg=new THREE.BufferGeometry();
+  pg.setAttribute('position',new THREE.BufferAttribute(pp,3));
+  const pm=new THREE.PointsMaterial({color:0x00a1c2,size:.09,transparent:true,opacity:.6,
+    blending:THREE.AdditiveBlending,depthWrite:false});
+  bScene.add(new THREE.Points(pg,pm));
+
+  bScene.add(new THREE.AmbientLight(0x2a3038,1.1));
+  const key=new THREE.DirectionalLight(0xbfe6f2,.85); key.position.set(5,10,4); bScene.add(key);
+  const ac=new THREE.PointLight(0x00a1c2,22,30,2); ac.position.set(-6,3,-5); bScene.add(ac);
+
+  function sizeBody(){
+    bCam.aspect=innerWidth/innerHeight; bCam.updateProjectionMatrix();
+    bR.setSize(innerWidth,innerHeight);
+  }
+  sizeBody();
+
+  /* ================= 主循环 ================= */
+  let scrollP=0;
+  addEventListener('scroll',()=>{
+    scrollP=scrollY/Math.max(1,document.body.scrollHeight-innerHeight);
+  },{passive:true});
+
+  function frame(t){
+    const tt=t*.001;
+    requestAnimationFrame(frame);
+
+    /* --- 星云 --- */
+    if(!reduced){
+      const pa=pG.attributes.position.array;
+
+      // 指针射线 → 星云平面(y=0)的世界坐标，随星云 group 变换一起算
+      mouseLerp += ((mouseActive?1:0)-mouseLerp)*0.08;
+      if(mouseLerp>0.01){
+        ray.setFromCamera(mouse,hCam);
+        if(ray.ray.intersectPlane(hitPlane,hitPoint)){
+          // group 有 position/scale，粒子坐标是局部空间 → 反变换回局部
+          mTarget.set(
+            (hitPoint.x-neb.position.x)/neb.scale.x,
+            (hitPoint.y-neb.position.y)/neb.scale.y,
+            0
+          );
+        }
+      }
+
+      const PULL_R=3.4;          // 吸附半径（局部单位）
+      const PULL_STR=3.2;        // 最大拉近比例
+
+      for(let i=0;i<N;i++){
+        const i3=i*3;
+        // 基础自转 + 每粒子轻微差速 → Differential rotation，像真实星系
+        const rot=tt*.10 + spin[i]*.12;
+        const bx=base[i3], by=base[i3+1], bz=base[i3+2];
+        const cs=Math.cos(rot), sn=Math.sin(rot);
+        let x=bx*cs-bz*sn;
+        let y=by+Math.sin(tt*.5+spin[i])*.09;
+        let z=bx*sn+bz*cs;
+
+        // 鼠标吸附：距离越近拉得越狠，中心几乎完全贴合指针
+        if(mouseLerp>0.01){
+          const dx=mTarget.x-x, dy=mTarget.y-y;
+          const d=Math.sqrt(dx*dx+dy*dy);
+          if(d<PULL_R){
+            const f=1-d/PULL_R;
+            const pull=f*f*PULL_STR*mouseLerp;   // 平方衰减
+            if(d>0.0001){ x+=(dx/d)*pull; y+=(dy/d)*pull; }
+            else { x=mTarget.x; y=mTarget.y; }
+          }
+        }
+        pa[i3]=x; pa[i3+1]=y; pa[i3+2]=z;
+      }
+      pG.attributes.position.needsUpdate=true;
+
+      core.material.uniforms.t.value=tt;
+      const pulse=1+Math.sin(tt*1.1)*.07;
+      core.scale.setScalar(pulse);
+      halo.scale.setScalar(6.5*pulse);
+      halo.material.opacity=.55+Math.sin(tt*.9)*.15;
+
+      // 星云随滚动淡出
+      const hp=Math.min(1,Math.max(0,scrollY/(heroEl.offsetHeight*.75)));
+      cHero.style.opacity=(1-hp).toFixed(3);
+    }
+    hR.render(hScene,hCam);
+
+    /* --- 体素地形（滚过英雄区才可见）--- */
+    const showBody=Math.min(1,Math.max(0,(scrollP-.06)/.12));
+    if(showBody>0){
+      cBody.style.opacity=showBody.toFixed(3);
+      if(!reduced){
+        const a=pg.attributes.position.array;
+        for(let i=0;i<PN;i++){
+          a[i*3+1]+=.002;
+          a[i*3]+=Math.sin(tt*.5+sd[i])*.0015;
+          if(a[i*3+1]>10)a[i*3+1]=-.5;
+        }
+        pg.attributes.position.needsUpdate=true;
+        pm.opacity=.4+Math.sin(tt*.8)*.18;
+        inst.rotation.y=Math.sin(tt*.04)*.03;
+        isles.rotation.y=-inst.rotation.y*1.5;
+        isles.position.y=Math.sin(tt*.2)*.25;
+        bCam.position.set(0,3+scrollP*2.2,12+scrollP*8);
+        bCam.lookAt(0,.3+scrollP,0);
+        bScene.fog.far=30-scrollP*12; bScene.fog.near=10-scrollP*5;
+      }
+      bR.render(bScene,bCam);
+    }
+  }
+  requestAnimationFrame(frame);
+
+  addEventListener('resize',()=>{sizeHero();sizeBody()});
+})();
+</script>
+
+</body>
+</html>
