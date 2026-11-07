@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PCL-Y</title>
-<meta name="description" content="PCL-Y — Plain Craft Launcher 的二次分发定制版">
+<meta name="description" content="PCL-Y">
 <style>
 :root{
   --bg:#0b0b0e;
@@ -37,18 +37,18 @@ a{color:inherit;text-decoration:none}
 
 canvas#gl{position:fixed;inset:0;z-index:0;width:100%;height:100%;pointer-events:none}
 
-/* 英雄区：左文右星云 */
+
 .hero{position:relative;min-height:100vh;display:flex;align-items:center;padding:120px 0 60px}
 .hero-in{position:relative;z-index:2;max-width:560px}
 #nebula{position:absolute;inset:0;z-index:1;pointer-events:none}
-.hero::after{ /* 左侧压暗，保证文字可读 */
+.hero::after{ /* 为什么会有这种东西 */
   content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
   background:linear-gradient(100deg,rgba(11,11,14,.92) 0%,rgba(11,11,14,.72) 26%,rgba(11,11,14,.18) 46%,transparent 60%);
 }
 
 .wrap{position:relative;z-index:1;width:min(1140px,calc(100% - 48px));margin:0 auto}
 
-/* ---- nav ---- */
+/*  nav  */
 header{
   position:sticky;top:0;z-index:50;
   border-bottom:1px solid var(--line);
@@ -73,7 +73,7 @@ header{
 .nav-cta:hover{background:rgba(0,161,194,.22);border-color:var(--ac)}
 .burger{display:none;margin-left:auto;width:34px;height:34px;background:none;border:1px solid var(--line-2);border-radius:6px;color:var(--tx);cursor:pointer;font-size:15px}
 
-/* ---- hero ---- */
+/*  hero */
 .tag{
   display:inline-flex;align-items:center;gap:7px;
   font-size:12px;color:var(--tx-2);font-family:var(--m);
@@ -117,7 +117,7 @@ section{padding:88px 0;border-top:1px solid var(--line)}
 h2{font-size:clamp(26px,3.6vw,38px);font-weight:600;letter-spacing:-.03em;line-height:1.18;max-width:640px}
 .note{margin-top:14px;color:var(--tx-2);max-width:560px;font-size:15px}
 
-/* feature list — 极简，无卡片框 */
+
 .feat{display:flex;flex-direction:column;margin-top:52px;border-top:1px solid var(--line)}
 .frow{
   display:grid;grid-template-columns:44px 1fr;gap:20px;
@@ -208,8 +208,7 @@ footer .lk a:hover{color:var(--ac)}
     <span class="tag"><b>v1.2.0</b> · 稳定版可用</span>
     <h1>PCL-Y<span>Plain Craft Launcher 定制版</span></h1>
     <p class="sub">
-      在 PCL 稳定的内核之上，补上一键性能优化、皮肤库、游戏增强与实验性联机。
-      不重新造轮子，只把你每次都要手动做的事收进一次点击。
+      在 PCL 稳定的内核之上，补上一键性能优化、皮肤库、游戏增强与实验性联机，几个月前的项目，不是什么趁人之危的产物。
     </p>
     <div class="btns">
       <a class="btn btn-p" href="https://github.com/xiaoy-ovo/pcl-y/releases" target="_blank" rel="noopener">
@@ -293,8 +292,8 @@ footer .lk a:hover{color:var(--ac)}
   <div class="wrap">
     <div class="rv">
       <div class="lab">Interface</div>
-      <h2>熟悉的 PCL，多了一层</h2>
-      <p class="note">界面语言与交互习惯保持一致，你不需要重新学习什么.</p>
+      <h2>熟悉的 PCL，多了半层</h2>
+      <p class="note">界面语言与交互习惯保持一致（实际是我不会写三方api）</p>
     </div>
 
     <figure class="shot rv">
@@ -381,9 +380,7 @@ addEventListener('scroll',()=>{
 
 <script src="vendor/three.umd.js"></script>
 <script>
-/* three.js r160 —— 用户已授权 unpkg CDN 的 three@0.160.0
-   英雄区：螺旋星云（粒子沿对数螺旋旋进中心，鼠标靠近吸附）
-   滚过英雄区后：切到体素地形作为全站背景                        */
+/* 其实我想写这个是想学黑猪ai 但是效果太过xx    */
 (function(){
 const heroEl=document.querySelector('.hero');
 const cHero=document.getElementById('nebula');
@@ -395,8 +392,7 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
   const DPR=Math.min(devicePixelRatio,2);
   const lerp=(a,b,t)=>a+(b-a)*t;
 
-  /* ================= 英雄区：螺旋星云 ================= */
-  // 圆点贴图：实心亮核 + 快速衰减到 0，保证小尺寸下依然可见
+  /*英雄区的亮点*/
   function dotTex(){
     const c=document.createElement('canvas'); c.width=c.height=64;
     const g=c.getContext('2d');
@@ -417,7 +413,7 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
   const hR=new THREE.WebGLRenderer({canvas:cHero,antialias:true,alpha:true,powerPreference:'high-performance'});
   hR.setPixelRatio(DPR);
 
-  // 背景星点（远处的静态星尘）
+  // 背景星点
   const BG=900, bgP=new Float32Array(BG*3);
   for(let i=0;i<BG;i++){
     bgP[i*3]=(Math.random()-.5)*120;
@@ -432,38 +428,35 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
   // 螺旋星系粒子
   const N=16000;
   const pos=new Float32Array(N*3);
-  const base=new Float32Array(N*3);   // 螺旋上的"家"位置
+  const base=new Float32Array(N*3);   // home
   const col=new Float32Array(N*3);
   const spin=new Float32Array(N);
   const c1=new THREE.Color(0xffffff), c2=new THREE.Color(0x7fe6ff),
         c3=new THREE.Color(0xc9a6ff), c4=new THREE.Color(0x9dffc8);
   const tmp=new THREE.Color();
 
-  // 参数化螺线：TW=总缠绕圈数，RMAX=最外半径
+ 
   const TW=2.8, RMAX=8.2, RMIN=0.9;
-  const K=TW*Math.PI*2/(RMAX-RMIN);   // 每单位半径的角度增量 → 保证刚好 TW 圈
+  const K=TW*Math.PI*2/(RMAX-RMIN); 
 
   for(let i=0;i<N;i++){
-    // 沿螺线均匀取 t（0=中心 → 1=外缘），再抖动 → 每圈粒子数一致
-    let t=Math.pow(Math.random(),0.75);       // 略偏外缘
-    // 少量粒子脱离螺线，撒在外围做"散星"
+    let t=Math.pow(Math.random(),0.75);       
     const loose=Math.random()<.12;
     const r = RMIN + t*(RMAX-RMIN);
 
-    // ★ 核心：角度随半径线性增长 → 这就是螺线
-    const armOff = (i%2)*Math.PI;             // 2 条主臂，对臂
-    const jitter = (Math.random()-.5) * (.10 + t*.55);  // 抖动随半径变宽
+    //阴间
+    const armOff = (i%2)*Math.PI;          
+    const jitter = (Math.random()-.5) * (.10 + t*.55); 
     const theta = (r-RMIN)*K + armOff + jitter;
 
-    // 垂直厚度：中心薄、外缘厚（盘状）
+
     const y = (Math.random()-.5) * (.10 + t*1.5);
 
     base[i*3]=Math.cos(theta)*r;
     base[i*3+1]=y;
-    base[i*3+2]=Math.sin(theta)*r*.55;   // z 压缩 → 斜视
+    base[i*3+2]=Math.sin(theta)*r*.55; 
 
     if(loose){
-      // 散星：脱离螺线，随机撒在更外圈
       const a=Math.random()*Math.PI*2;
       const rr=RMAX*(.75+Math.random()*.6);
       base[i*3]=Math.cos(a)*rr;
@@ -473,7 +466,7 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
 
     pos[i*3]=base[i*3]; pos[i*3+1]=base[i*3+1]; pos[i*3+2]=base[i*3+2];
 
-    // 颜色：核心白 → 青 → 淡紫 → 薄荷
+    // 颜色
     const rr=Math.min(1,r/RMAX);
     if(rr<.14) tmp.copy(c1).lerp(c2,Math.random()*.45);
     else if(rr<.45) tmp.copy(c2).lerp(c3,Math.random()*.5);
@@ -488,11 +481,9 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
   const pG=new THREE.BufferGeometry();
   pG.setAttribute('position',new THREE.BufferAttribute(pos,3));
   pG.setAttribute('color',new THREE.BufferAttribute(col,3));
-
-  // 纯内置 PointsMaterial，不做任何 shader 注入 —— 这条路径已被证实能出图
   const pM=new THREE.PointsMaterial({
-    size:2.1,                          // 固定像素大小
-    sizeAttenuation:false,             // 关掉透视衰减，避免远处粒子缩到 0
+    size:2.1,                          // 这有用吗？
+    sizeAttenuation:false,             
     vertexColors:true,
     transparent:true, opacity:1,
     blending:THREE.AdditiveBlending,
@@ -524,20 +515,18 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
     blending:THREE.AdditiveBlending,depthWrite:false}));
   halo.scale.set(6.5,6.5,1);
 
-  // 星云整体装进 group：靠位移把它推到画面右侧，给左边文字让位
   const neb=new THREE.Group();
   neb.add(pts); neb.add(core); neb.add(halo);
   hScene.add(neb);
 
-  /* 鼠标吸附：把指针射线投影到星云平面，得到准确的世界坐标 */
-  const mouse=new THREE.Vector2(0,0);       // 归一化 -1~1
+
+  const mouse=new THREE.Vector2(0,0);      
   const mTarget=new THREE.Vector3();
   const ray=new THREE.Raycaster();
-  // 盘面法线（星系盘大致在 y=0，法线朝相机倾斜），比 y=0 水平面更贴合
   const hitPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
   const hitPoint=new THREE.Vector3();
   let mouseActive=false;
-  let mouseLerp=0;                          // 0→松开，1→完全吸住
+  let mouseLerp=0;                       
 
   heroEl.addEventListener('pointermove',e=>{
     const r=heroEl.getBoundingClientRect();
@@ -552,20 +541,20 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
   function sizeHero(){
     const w=heroEl.clientWidth,h=heroEl.clientHeight;
     hCam.aspect=w/h; hCam.updateProjectionMatrix(); hR.setSize(w,h,false);
-    // 按相机可视范围换算，把星云放到画面右侧、与文字不重叠
+    // 二编：这个其实有个bug 但是我懒得修了
     const halfH=hCam.position.z*Math.tan(hCam.fov*Math.PI/360);
     const halfW=halfH*(w/h);
-    const wantR=halfH*1.05;          // 半径：略大于可视半高，粒子溢出边缘更有纵深
+    const wantR=halfH*1.05;         
     const sc=wantR/RMAX;
     neb.scale.setScalar(sc);
-    neb.position.x = w>900 ? halfW-sc*RMAX*1.02 : 0;   // 中心落在可视半宽的 ~48% 处
-    neb.position.y = halfH*0.22;                        // 略高于中线
-    neb.position.y = halfH*0.22;                        // 略高于中线
+    neb.position.x = w>900 ? halfW-sc*RMAX*1.02 : 0; 
+    neb.position.y = halfH*0.22;                     
+    neb.position.y = halfH*0.22;                      
   }
   sizeHero();
 
 
-  /* ================= 下方：体素地形 ================= */
+
   const bScene=new THREE.Scene();
   bScene.fog=new THREE.Fog(0x0b0b0e,10,30);
   const bCam=new THREE.PerspectiveCamera(52,1,.1,100);
@@ -650,16 +639,16 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
     const tt=t*.001;
     requestAnimationFrame(frame);
 
-    /* --- 星云 --- */
+
     if(!reduced){
       const pa=pG.attributes.position.array;
 
-      // 指针射线 → 星云平面(y=0)的世界坐标，随星云 group 变换一起算
+
       mouseLerp += ((mouseActive?1:0)-mouseLerp)*0.08;
       if(mouseLerp>0.01){
         ray.setFromCamera(mouse,hCam);
         if(ray.ray.intersectPlane(hitPlane,hitPoint)){
-          // group 有 position/scale，粒子坐标是局部空间 → 反变换回局部
+
           mTarget.set(
             (hitPoint.x-neb.position.x)/neb.scale.x,
             (hitPoint.y-neb.position.y)/neb.scale.y,
@@ -673,7 +662,6 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
 
       for(let i=0;i<N;i++){
         const i3=i*3;
-        // 基础自转 + 每粒子轻微差速 → Differential rotation，像真实星系
         const rot=tt*.10 + spin[i]*.12;
         const bx=base[i3], by=base[i3+1], bz=base[i3+2];
         const cs=Math.cos(rot), sn=Math.sin(rot);
@@ -681,7 +669,7 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
         let y=by+Math.sin(tt*.5+spin[i])*.09;
         let z=bx*sn+bz*cs;
 
-        // 鼠标吸附：距离越近拉得越狠，中心几乎完全贴合指针
+     
         if(mouseLerp>0.01){
           const dx=mTarget.x-x, dy=mTarget.y-y;
           const d=Math.sqrt(dx*dx+dy*dy);
@@ -708,7 +696,7 @@ if(!THREE||!heroEl||!cHero||!cBody){ if(cHero)cHero.remove(); return; }
     }
     hR.render(hScene,hCam);
 
-    /* --- 体素地形（滚过英雄区才可见）--- */
+
     const showBody=Math.min(1,Math.max(0,(scrollP-.06)/.12));
     if(showBody>0){
       cBody.style.opacity=showBody.toFixed(3);
