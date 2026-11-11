@@ -30,7 +30,6 @@
 if(!window.mqtt){
   var s = document.createElement('script');
   s.src = 'https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';
-  s.onload = function(){ if(window.__xicBoot){ var b = window.__xicBoot; window.__xicBoot = null; b(); } };
   document.head.appendChild(s);
 }
 </script>
@@ -72,7 +71,7 @@ if(!window.mqtt){
   #bgColorReset { background:#333; color:#eee; border:1px solid #444; border-radius:10px; padding:6px 10px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:11px; }
   #bgColorReset:hover { background:#3d3d3d; }
   #box { height:64vh; overflow-y:auto; padding:10px 12px; background:var(--box-bg); }
-  #box div { position:relative; margin:7px 0; padding:7px 12px; border-radius:var(--bubble-radius); background:var(--bubble-bg); color:var(--bubble-color); border:var(--bubble-border); width:fit-content; max-width:80%; word-break:break-all; line-height:1.5; backdrop-filter:blur(6px); }
+  #box > div { position:relative; margin:7px 0; padding:7px 12px; border-radius:var(--bubble-radius); background:var(--bubble-bg); color:var(--bubble-color); border:var(--bubble-border); width:fit-content; max-width:80%; word-break:break-all; line-height:1.5; backdrop-filter:blur(6px); }
   @keyframes bubblePop{
     0%{opacity:0; transform:scale(.7) translateY(18px);}
     55%{opacity:1;}
@@ -138,6 +137,20 @@ if(!window.mqtt){
   .mediaFile a { color:#8ec5ff; word-break:break-all; }
   .mediaBlocked { display:flex; flex-direction:column; justify-content:center; align-items:center; width:230px; height:120px; border-radius:12px; border:1px dashed #555; background:rgba(255,255,255,.03); color:#999; font-size:12px; gap:6px; text-align:center; padding:10px; }
   .mediaBlocked .bi { font-size:22px; }
+  .msgTools { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .msgTools button { background:rgba(255,255,255,.08); color:var(--bubble-color); border:1px solid rgba(255,255,255,.18); border-radius:8px; padding:2px 8px; font-size:11px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; }
+  .msgTools button:hover { background:rgba(255,255,255,.18); }
+  .msgTools .liked { background:rgba(255,180,80,.28); border-color:rgba(255,180,80,.5); }
+  .msgTools .adminOnly { display:none; }
+  body.is-admin .msgTools .adminOnly { display:inline-block; background:rgba(255,90,60,.22); border-color:rgba(255,90,60,.5); }
+  .quoteBlock { border-left:3px solid var(--from-color); background:rgba(255,255,255,.06); padding:5px 9px; border-radius:7px; font-size:12px; opacity:.82; margin-bottom:6px; max-width:420px; white-space:pre-wrap; }
+  .quoteBlock .qf { font-weight:700; color:var(--from-color); }
+  .quoteBar { display:none; align-items:center; gap:8px; padding:6px 12px; background:rgba(60,110,170,.25); font-size:12px; color:#cfe6ff; }
+  .quoteBar.show { display:flex; }
+  .quoteBar span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .quoteBar button { background:#456; color:#fff; border:none; border-radius:8px; padding:3px 9px; cursor:pointer; font-size:11px; }
+  .recalled { font-style:italic; opacity:.55; font-size:12px; }
+  .likeCount { font-size:11px; opacity:.75; margin-left:4px; }
   .seo-hidden {
     position:absolute; width:1px; height:1px; overflow:hidden;
     clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; padding:0; margin:-1px;
@@ -207,6 +220,10 @@ if(!window.mqtt){
   </ul>
 </div>
 <div id="box"></div>
+<div id="quoteBar" class="quoteBar">
+  <span id="quoteText"></span>
+  <button id="quoteCancel">取消引用</button>
+</div>
 <div id="namebar">
   <input id="name" placeholder="你的名字">
   <button id="rename">改名</button>
@@ -218,7 +235,6 @@ if(!window.mqtt){
   <button id="send">发送</button>
 </div>
 <script>
-window.__xicBoot = function(){
 const TOPIC = 'xic/global';
 const BROKERS = [
   'wss://broker.emqx.io:8084/mqtt',
@@ -249,13 +265,67 @@ function escapeHtml(s){ return String(s).replace(/[&<>]/g, c=>({'&':'&amp;','<':
 function add(div, pop){ if(pop && (div.classList.contains('msg') || div.classList.contains('sys'))) div.classList.add('pop'); box.appendChild(div); box.scrollTop = box.scrollHeight; }
 function div(cls, html){ const x=document.createElement('div'); x.className=cls; x.innerHTML=html; return x; }
 
+let deviceId = localStorage.getItem('xic_device');
+if(!deviceId){
+  deviceId = 'd_' + Math.random().toString(16).slice(2) + Date.now().toString(16);
+  localStorage.setItem('xic_device', deviceId);
+}
+
 let nick = localStorage.getItem('xic_nick');
 if(!nick){ nick = '匿名' + Math.floor(1000 + Math.random()*9000); localStorage.setItem('xic_nick', nick); }
 nameInput.value = nick;
 
+const DB_NAME = 'xic_db';
+const STORE = 'kv';
+let idb = null;
+function openDB(){
+  return new Promise((res) => {
+    try {
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = () => { if(!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE); };
+      r.onsuccess = () => { idb = r.result; res(idb); };
+      r.onerror = () => res(null);
+    } catch(e){ res(null); }
+  });
+}
+function idbPut(k, v){
+  if(!idb) return Promise.resolve();
+  return new Promise((res) => {
+    try { const tx = idb.transaction(STORE, 'readwrite'); tx.objectStore(STORE).put(v, k); tx.oncomplete = res; tx.onerror = res; } catch(e){ res(); }
+  });
+}
+function idbGet(k){
+  if(!idb) return Promise.resolve(null);
+  return new Promise((res) => {
+    try { const tx = idb.transaction(STORE, 'readonly'); const q = tx.objectStore(STORE).get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch(e){ res(null); }
+  });
+}
+
 let history = [];
 try { history = JSON.parse(localStorage.getItem('xic_history') || '[]'); } catch(e){ history = []; }
-function saveHistory(){ localStorage.setItem('xic_history', JSON.stringify(history.slice(-200))); }
+if(!Array.isArray(history)) history = [];
+let likes = {};
+try { likes = JSON.parse(localStorage.getItem('xic_likes') || '{}') || {}; } catch(e){ likes = {}; }
+
+function saveHistory(){
+  try { localStorage.setItem('xic_history', JSON.stringify(history)); } catch(e){}
+  idbPut('history', history);
+}
+function saveLikes(){ localStorage.setItem('xic_likes', JSON.stringify(likes)); idbPut('likes', likes); }
+function saveIdentity(){ localStorage.setItem('xic_nick', nick); localStorage.setItem('xic_device', deviceId); idbPut('identity', { nick, deviceId }); }
+
+openDB().then(async () => {
+  const dbHist = await idbGet('history');
+  if(Array.isArray(dbHist) && dbHist.length > history.length){ history = dbHist; box.innerHTML = ''; history.forEach(m => render(m)); }
+  const dbId = await idbGet('identity');
+  if(dbId){
+    if(!localStorage.getItem('xic_nick') && dbId.nick){ nick = dbId.nick; nameInput.value = nick; }
+    if(!localStorage.getItem('xic_device') && dbId.deviceId){ deviceId = dbId.deviceId; localStorage.setItem('xic_device', deviceId); }
+  } else {
+    idbPut('identity', { nick, deviceId });
+  }
+});
+
 history.forEach(m => render(m));
 box.scrollTop = box.scrollHeight;
 
@@ -414,20 +484,72 @@ function revealMedia(wrap, m, src, name, kind){
   }
 }
 
+function msgToolsHtml(m){
+  const id = m.id || '';
+  const likesN = likes[id] || 0;
+  const liked = likes[id + '_me'] ? ' liked' : '';
+  const canRecallSelf = m.from === nick && m.ts && (Date.now() - m.ts < 180000);
+  const recallBtn = canRecallSelf
+    ? '<button data-act="recall" data-id="' + escapeHtml(id) + '">撤回</button>'
+    : '';
+  return '<div class="msgTools">' +
+    '<button data-act="quote" data-id="' + escapeHtml(id) + '">引用</button>' +
+    '<button data-act="like" data-id="' + escapeHtml(id) + '" class="' + liked + '">点赞 <span class="likeCount">' + likesN + '</span></button>' +
+    recallBtn +
+    '<button data-act="adminrecall" data-id="' + escapeHtml(id) + '" class="adminOnly">管理员撤回</button>' +
+  '</div>';
+}
+
+function findMsg(id){ for(let i = history.length - 1; i >= 0; i--){ if(history[i].id === id) return history[i]; } return null; }
+
+function quoteBlockHtml(m){
+  if(!m) return '';
+  const label = m.recalled ? '[已撤回]' : (m.kind ? '[媒体] ' + escapeHtml(m.name || '') : escapeHtml(String(m.text || '').slice(0, 120)));
+  return '<div class="quoteBlock"><span class="qf">' + escapeHtml(m.from) + '</span>：' + label + '</div>';
+}
+
 function render(m, pop){
   if(m.type === 'sys'){ add(div('sys', escapeHtml(m.text)), pop); return; }
-  if(m.type === 'msg'){
+  if(m.type === 'msg' || m.type === 'media'){
+    const id = m.id || '';
     const mine = m.from === nick ? ' mine' : '';
-    add(div('msg' + mine, '<span class="from">' + escapeHtml(m.from) + '</span>: ' + escapeHtml(m.text)), pop);
-    return;
-  }
-  if(m.type === 'media'){
-    const mine = m.from === nick ? ' mine' : '';
-    add(buildMediaCard(m, mine, pop), pop);
+    let el;
+    if(m.recalled){
+      el = div('msg' + mine, '<span class="recalled">该消息已撤回</span>');
+    } else if(m.type === 'media'){
+      el = buildMediaCard(m, mine, pop);
+    } else {
+      const qb = m.quote ? quoteBlockHtml(m.quote) : '';
+      el = div('msg' + mine, '<span class="from">' + escapeHtml(m.from) + '</span>: ' + escapeHtml(m.text));
+      if(qb) el.insertAdjacentHTML('afterbegin', qb);
+    }
+    if(!m.recalled) el.insertAdjacentHTML('beforeend', msgToolsHtml(m));
+    el.dataset.mid = id;
+    add(el, pop);
     return;
   }
   if(m.type === 'rename'){ add(div('sys', escapeHtml(m.from) + ' 改名为 ' + escapeHtml(m.text)), pop); return; }
   if(m.type === 'announce'){ showAnnounce(m.text); return; }
+  if(m.type === 'recall'){
+    const target = findMsg(m.target);
+    if(target){
+      target.recalled = true;
+      target.text = '';
+      target.src = '';
+      saveHistory();
+      const node = box.querySelector('[data-mid="' + CSS.escape(m.target) + '"]');
+      if(node){ node.innerHTML = '<span class="recalled">该消息已撤回</span>'; node.classList.remove('pop'); }
+    }
+    return;
+  }
+  if(m.type === 'like'){
+    const k = m.target;
+    likes[k] = (likes[k] || 0) + 1;
+    saveLikes();
+    const nodes = box.querySelectorAll('[data-mid="' + CSS.escape(k) + '"] .likeCount');
+    nodes.forEach(n => n.textContent = likes[k]);
+    return;
+  }
   if(m.type === 'clearall'){ box.innerHTML = ''; history = []; saveHistory(); add(div('sys', '管理员已执行全员清屏。'), pop); return; }
 }
 
@@ -460,6 +582,7 @@ let everConnected = false;
 function setStatus(){
   const on = clients.filter(c => c.connected).length;
   if(on > 0) statusEl.textContent = '已连接 · ' + on + '/' + BROKERS.length + ' 条线路';
+  else if(typeof window.mqtt === 'undefined') statusEl.textContent = '正在加载通信库，本地功能可用…';
   else statusEl.textContent = everConnected ? '全部线路断开，重连中…' : '连接中…';
 }
 
@@ -501,42 +624,72 @@ function handleIncoming(topic, payload){
   if(seen.has(key)) return;
   seen.add(key); seenQueue.push(key);
   if(seenQueue.length > 400) seen.delete(seenQueue.shift());
+  if(m.type === 'recall'){
+    if(m.admin){ if(m.token !== ADMIN_TOKEN) return; }
+    else if(m.by !== deviceId) return;
+    render(m, true);
+    return;
+  }
   if(m.type === 'clearall' || m.type === 'announce'){
     if(m.token !== ADMIN_TOKEN) return;
     render(m, true);
     return;
   }
+  if(m.type === 'like'){ render(m, true); return; }
   render(m, true);
   if(m.type === 'msg' || m.type === 'media'){ history.push(m); saveHistory(); }
 }
 
-BROKERS.forEach((url, i) => {
-  let c;
-  try {
-    c = mqtt.connect(url, {
-      clientId: 'xic_' + i + '_' + Math.random().toString(16).slice(2),
-      clean: true,
-      reconnectPeriod: 1500,
-      connectTimeout: 8000,
-      keepalive: 30
-    });
-  } catch(e){ return; }
-  clients.push(c);
-  c.on('connect', () => {
-    c.subscribe(TOPIC);
-    if(!everConnected){ everConnected = true; add(div('sys', '已连接，全世界都在一个频道上。'), true); }
+function connectAll(){
+  if(connectionStarted) return;
+  if(typeof window.mqtt === 'undefined' || !window.mqtt.connect){
     setStatus();
-    flushQueue();
+    setTimeout(connectAll, 1000);
+    return;
+  }
+  connectionStarted = true;
+  BROKERS.forEach((url, i) => {
+    let c;
+    try {
+      c = window.mqtt.connect(url, {
+        clientId: 'xic_' + i + '_' + Math.random().toString(16).slice(2),
+        clean: true,
+        reconnectPeriod: 1500,
+        connectTimeout: 8000,
+        keepalive: 30
+      });
+    } catch(e){ return; }
+    clients.push(c);
+    c.on('connect', () => {
+      c.subscribe(TOPIC);
+      if(!everConnected){ everConnected = true; add(div('sys', '已连接，全世界都在一个频道上。'), true); }
+      setStatus();
+      flushQueue();
+    });
+    c.on('reconnect', setStatus);
+    c.on('offline', setStatus);
+    c.on('close', setStatus);
+    c.on('error', setStatus);
+    c.on('message', handleIncoming);
   });
-  c.on('reconnect', setStatus);
-  c.on('offline', setStatus);
-  c.on('close', setStatus);
-  c.on('error', setStatus);
-  c.on('message', handleIncoming);
-});
-
+}
+let connectionStarted = false;
 setStatus();
+connectAll();
 setInterval(() => { if(queue.length) flushQueue(); }, 3000);
+
+let quoting = null;
+const quoteBar = document.getElementById('quoteBar');
+const quoteText = document.getElementById('quoteText');
+function setQuote(m){
+  quoting = m;
+  if(!m){ quoteBar.classList.remove('show'); return; }
+  const short = m.recalled ? '[已撤回]' : (m.kind ? '[媒体]' : String(m.text || '').slice(0, 60));
+  quoteText.textContent = '引用 ' + m.from + '：' + short;
+  quoteBar.classList.add('show');
+  input.focus();
+}
+document.getElementById('quoteCancel').onclick = () => setQuote(null);
 
 function send(){
   const t = input.value;
@@ -546,11 +699,14 @@ function send(){
   if(now - lastMsgTs < MIN_INTERVAL) return;
   msgTimes = msgTimes.filter(x => now - x < WINDOW_MS);
   if(msgTimes.length >= MAX_PER_WINDOW){ mutedUntil = now + MUTE_MS; msgTimes = []; add(div('sys', '你发言太快，已被禁言 ' + (MUTE_MS/1000) + ' 秒。'), true); return; }
-  if(t === lastText) return;
+  if(t === lastText && !quoting) return;
   lastText = t;
   lastMsgTs = now;
   msgTimes.push(now);
-  publish({ id: Math.random().toString(16).slice(2) + now, type:'msg', from:nick, text:t.slice(0, MAX_LEN), ts:now });
+  const payload = { id: deviceId + '_' + now, type:'msg', from:nick, text:t.slice(0, MAX_LEN), ts:now };
+  if(quoting){ payload.quote = { from: quoting.from, text: quoting.text, name: quoting.name, kind: quoting.kind, recalled: !!quoting.recalled }; }
+  publish(payload);
+  setQuote(null);
   input.value = '';
 }
 function rename(){
@@ -558,8 +714,8 @@ function rename(){
   if(!n || n === nick) return;
   const old = nick;
   nick = n;
-  localStorage.setItem('xic_nick', nick);
-  publish({ id: Math.random().toString(16).slice(2) + Date.now(), type:'rename', from:old, text:nick });
+  saveIdentity();
+  publish({ id: deviceId + '_rename_' + Date.now(), type:'rename', from:old, text:nick });
 }
 
 const MAX_MEDIA_B64 = 180000;
@@ -569,7 +725,7 @@ function publishMedia(kind, src, name){
   if(now - lastMsgTs < MIN_INTERVAL) return;
   lastMsgTs = now;
   msgTimes.push(now);
-  publish({ id: Math.random().toString(16).slice(2) + now, type:'media', from:nick, kind, src, name, ts:now });
+  publish({ id: deviceId + '_' + now, type:'media', from:nick, kind, src, name, ts:now });
 }
 
 function shrinkImage(file, cb){
@@ -639,6 +795,48 @@ function refreshMediaCards(){
   history.forEach(m => render(m));
 }
 renderBlockBtn();
+
+box.addEventListener('click', (e) => {
+  const btn = e.target.closest('.msgTools button');
+  if(!btn) return;
+  e.stopPropagation();
+  const act = btn.dataset.act;
+  const id = btn.dataset.id;
+  if(!id) return;
+  if(act === 'quote'){ setQuote(findMsg(id)); return; }
+  if(act === 'like'){
+    if(likes[id + '_me']) return;
+    likes[id + '_me'] = 1;
+    saveLikes();
+    publish({ id: deviceId + '_like_' + Date.now(), type:'like', target:id, by:deviceId });
+    render({ type:'like', target:id });
+    return;
+  }
+  if(act === 'recall'){
+    const m = findMsg(id);
+    if(!m || m.from !== nick || !m.ts || Date.now() - m.ts >= 180000) return;
+    doRecall(m, false);
+    return;
+  }
+  if(act === 'adminrecall'){
+    if(!isAdmin) return;
+    const m = findMsg(id);
+    if(!m) return;
+    doRecall(m, true);
+  }
+});
+
+function doRecall(m, admin){
+  m.recalled = true;
+  m.text = '';
+  m.src = '';
+  saveHistory();
+  const node = box.querySelector('[data-mid="' + CSS.escape(m.id) + '"]');
+  if(node){ node.innerHTML = '<span class="recalled">该消息已撤回</span>'; node.classList.remove('pop'); }
+  const payload = { id: deviceId + '_recall_' + Date.now(), type:'recall', target:m.id, by:deviceId, admin };
+  if(admin) payload.token = ADMIN_TOKEN;
+  publish(payload);
+}
 
 document.getElementById('send').onclick = send;
 document.getElementById('rename').onclick = rename;
@@ -774,6 +972,8 @@ async function resolveAdmin(){
       if(ip === ADMIN_IP){
         isAdmin = true;
         adminPanel.classList.add('show');
+        document.body.classList.add('is-admin');
+        refreshMediaCards();
         document.getElementById('adminTag').textContent = '管理员 · ' + ip;
         return;
       }
@@ -782,8 +982,6 @@ async function resolveAdmin(){
   }
 }
 resolveAdmin();
-};
-if(window.mqtt){ window.__xicBoot(); window.__xicBoot = null; }
 </script>
 </body>
 </html>
