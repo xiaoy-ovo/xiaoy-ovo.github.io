@@ -26,7 +26,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
-<script>if(!window.mqtt){document.write('<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"><\/script>')}</script>
+<script>
+if(!window.mqtt){
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';
+  s.onload = function(){ if(window.__xicBoot){ var b = window.__xicBoot; window.__xicBoot = null; b(); } };
+  document.head.appendChild(s);
+}
+</script>
 <style>
   body { background:#111; color:#eee; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; margin:0; }
   :root{
@@ -107,6 +114,30 @@
   #announceText { flex:1; min-width:150px; background:#241408; color:#ffe6cc; border:1px solid #6a3a1a; border-radius:10px; padding:6px 10px; outline:none; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:11px; }
   #adminPanel button { background:#5a3212; color:#ffe6cc; border:1px solid #8a5222; border-radius:10px; padding:6px 10px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:11px; }
   #adminPanel button:hover { background:#704018; }
+  #attachBtn { background:#333; color:#eee; border:1px solid #444; border-radius:11px; padding:0 12px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:13px; }
+  #attachBtn:hover { background:#3d3d3d; }
+  #attachFile { display:none; }
+  .mediaCard { padding:8px !important; min-width:210px; }
+  .mediaWrap { position:relative; width:230px; height:160px; border-radius:12px; overflow:hidden; background:#000; cursor:pointer; }
+  .mediaBlur { width:100%; height:100%; object-fit:cover; filter:blur(14px) saturate(1.4); transform:scale(1.15); }
+  .mediaBlur.pixel { image-rendering:pixelated; filter:blur(5px) contrast(1.3) saturate(1.5); width:100%; height:100%; }
+  .mediaShade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.72)); display:flex; flex-direction:column; justify-content:center; align-items:center; gap:6px; text-align:center; padding:10px; }
+  .mediaShade .lk { font-size:13px; font-weight:700; color:#ffd9a0; letter-spacing:1px; }
+  .mediaShade .sub { font-size:11px; color:#d8d8d8; line-height:1.5; }
+  .mediaShade .tag { font-size:10px; color:#aaa; margin-top:2px; }
+  .mediaGuard { position:absolute; inset:0; background:rgba(4,6,10,.94); display:flex; flex-direction:column; justify-content:center; align-items:center; gap:9px; text-align:center; padding:14px; }
+  .mediaGuard .warn { font-size:14px; font-weight:700; color:#ffb0a0; letter-spacing:1px; }
+  .mediaGuard .step { font-size:11px; color:#9fb6cc; }
+  .mediaGuard .desc { font-size:12px; color:#d6dfe8; line-height:1.6; }
+  .mediaGuard button { background:#8a3b2a; color:#fff; border:1px solid #c66a4a; border-radius:10px; padding:7px 16px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:12px; }
+  .mediaGuard button:disabled { opacity:.45; cursor:default; }
+  .mediaGuard button:hover:enabled { background:#a04a34; }
+  .mediaGuard .cancel { background:#333; border-color:#555; }
+  .mediaFull { width:100%; height:100%; object-fit:contain; background:#000; }
+  .mediaFile { display:flex; flex-direction:column; gap:8px; padding:10px; color:#eee; font-size:12px; }
+  .mediaFile a { color:#8ec5ff; word-break:break-all; }
+  .mediaBlocked { display:flex; flex-direction:column; justify-content:center; align-items:center; width:230px; height:120px; border-radius:12px; border:1px dashed #555; background:rgba(255,255,255,.03); color:#999; font-size:12px; gap:6px; text-align:center; padding:10px; }
+  .mediaBlocked .bi { font-size:22px; }
   .seo-hidden {
     position:absolute; width:1px; height:1px; overflow:hidden;
     clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; padding:0; margin:-1px;
@@ -161,6 +192,7 @@
   <label>我的色</label>
   <input id="bgColorMine" type="color" value="#3a6ea5" class="bubble-color">
   <button id="bgColorReset">重置颜色</button>
+  <button id="blockToggle">屏蔽媒体：关</button>
 </div>
 <div class="seo-hidden">
   <h2>匿名聊天频道 开放聊天服务器 好玩的网页 好玩的项目</h2>
@@ -180,10 +212,13 @@
   <button id="rename">改名</button>
 </div>
 <div id="bar">
+  <button id="attachBtn" title="发图片 / 视频 / 文件">📎</button>
+  <input id="attachFile" type="file">
   <input id="input" placeholder="说点什么…" autofocus>
   <button id="send">发送</button>
 </div>
 <script>
+window.__xicBoot = function(){
 const TOPIC = 'xic/global';
 const BROKERS = [
   'wss://broker.emqx.io:8084/mqtt',
@@ -203,6 +238,7 @@ const IP_APIS = [
 ];
 
 let isAdmin = false;
+let blockMedia = localStorage.getItem('xic_block') === '1';
 
 const box = document.getElementById('box');
 const input = document.getElementById('input');
@@ -223,11 +259,139 @@ function saveHistory(){ localStorage.setItem('xic_history', JSON.stringify(histo
 history.forEach(m => render(m));
 box.scrollTop = box.scrollHeight;
 
+function buildMediaCard(m, mine, pop){
+  const el = document.createElement('div');
+  el.className = 'msg' + mine + ' mediaCard';
+  const kind = m.kind || 'file';
+  const name = escapeHtml(m.name || '附件');
+  const src = m.src || '';
+  const safeSrc = /^(https?:|data:image\/|data:video\/|blob:)/i.test(src) ? src : '';
+  const fromLabel = '<span class="from">' + escapeHtml(m.from) + '</span>';
+
+  if(blockMedia){
+    el.innerHTML = fromLabel + '<div class="mediaBlocked"><div class="bi">🚫</div><div>媒体已被屏蔽</div><div style="font-size:10px;opacity:.7">' + name + '</div></div>';
+    return el;
+  }
+
+  let preview;
+  if(kind === 'image' && safeSrc){
+    preview = '<img class="mediaBlur pixel" src="' + escapeHtml(safeSrc) + '" alt="">';
+  } else if(kind === 'video' && safeSrc){
+    preview = '<div class="mediaBlur" style="background:linear-gradient(135deg,#223,#422)"></div>';
+  } else {
+    preview = '<div class="mediaBlur" style="background:repeating-linear-gradient(45deg,#1b1b1b,#1b1b1b 12px,#262626 12px,#262626 24px)"></div>';
+  }
+
+  el.innerHTML = fromLabel +
+    '<div class="mediaWrap">' + preview +
+      '<div class="mediaShade">' +
+        '<div class="lk">🔒 内容已模糊处理</div>' +
+        '<div class="sub">可能有不适宜内容，请谨慎观看</div>' +
+        '<div class="tag">' + name + ' · 点击查看</div>' +
+      '</div>' +
+    '</div>';
+
+  const wrap = el.querySelector('.mediaWrap');
+  let stage = 0;
+  wrap.onclick = () => {
+    if(stage === 0){ stage = 1; showGuard(el, wrap, m, safeSrc, name, kind, () => { stage = 0; }); }
+  };
+  return el;
+}
+
+function showGuard(card, wrap, m, src, name, kind, onCancel){
+  const g = document.createElement('div');
+  g.className = 'mediaGuard';
+  g.innerHTML =
+    '<div class="warn">⚠️ 可能有不适宜内容，请谨慎观看</div>' +
+    '<div class="desc" id="gd1">第一层防护：你即将查看来自匿名用户的媒体内容。</div>' +
+    '<div class="step" id="gs1">请等待 3 秒后确认</div>' +
+    '<div><button id="gb1" disabled>我已知悉，继续</button> <button class="cancel" id="gc1">取消</button></div>';
+  wrap.innerHTML = '';
+  wrap.appendChild(g);
+
+  let left = 3;
+  const stepEl = g.querySelector('#gs1');
+  const btn = g.querySelector('#gb1');
+  const timer = setInterval(() => {
+    left--;
+    if(left > 0){ stepEl.textContent = '请等待 ' + left + ' 秒后确认'; }
+    else { clearInterval(timer); stepEl.textContent = '现在可以确认'; btn.disabled = false; }
+  }, 1000);
+
+  g.querySelector('#gc1').onclick = () => { clearInterval(timer); wrap.innerHTML = restorePreview(card, m, src, name, kind); onCancel(); };
+  btn.onclick = () => {
+    clearInterval(timer);
+    const g2 = document.createElement('div');
+    g2.className = 'mediaGuard';
+    g2.innerHTML =
+      '<div class="warn">⚠️ 可能有不适宜内容，请谨慎观看</div>' +
+      '<div class="desc">第二层防护：内容未经审核，确认后即完整显示。</div>' +
+      '<div class="step" id="gs2">请等待 3 秒后最终确认</div>' +
+      '<div><button id="gb2" disabled>确认查看</button> <button class="cancel" id="gc2">取消</button></div>';
+    wrap.innerHTML = '';
+    wrap.appendChild(g2);
+    let l2 = 3;
+    const s2 = g2.querySelector('#gs2');
+    const b2 = g2.querySelector('#gb2');
+    const t2 = setInterval(() => {
+      l2--;
+      if(l2 > 0){ s2.textContent = '请等待 ' + l2 + ' 秒后最终确认'; }
+      else { clearInterval(t2); s2.textContent = '现在可以确认'; b2.disabled = false; }
+    }, 1000);
+    g2.querySelector('#gc2').onclick = () => { clearInterval(t2); wrap.innerHTML = restorePreview(card, m, src, name, kind); onCancel(); };
+    b2.onclick = () => {
+      clearInterval(t2);
+      revealMedia(wrap, m, src, name, kind);
+    };
+  };
+}
+
+function restorePreview(card, m, src, name, kind){
+  let preview;
+  if(kind === 'image' && src) preview = '<img class="mediaBlur pixel" src="' + escapeHtml(src) + '" alt="">';
+  else if(kind === 'video' && src) preview = '<div class="mediaBlur" style="background:linear-gradient(135deg,#223,#422)"></div>';
+  else preview = '<div class="mediaBlur" style="background:repeating-linear-gradient(45deg,#1b1b1b,#1b1b1b 12px,#262626 12px,#262626 24px)"></div>';
+  return preview +
+    '<div class="mediaShade"><div class="lk">🔒 内容已模糊处理</div>' +
+    '<div class="sub">可能有不适宜内容，请谨慎观看</div>' +
+    '<div class="tag">' + escapeHtml(name) + ' · 点击查看</div></div>';
+}
+
+function revealMedia(wrap, m, src, name, kind){
+  wrap.innerHTML = '';
+  wrap.style.width = '320px';
+  wrap.style.height = '240px';
+  wrap.style.cursor = 'default';
+  if(kind === 'image' && src){
+    const img = document.createElement('img');
+    img.className = 'mediaFull';
+    img.src = src;
+    wrap.appendChild(img);
+  } else if(kind === 'video' && src){
+    const v = document.createElement('video');
+    v.className = 'mediaFull';
+    v.src = src; v.controls = true; v.autoplay = true; v.loop = true; v.muted = true; v.playsInline = true;
+    wrap.appendChild(v);
+  } else {
+    const f = document.createElement('div');
+    f.className = 'mediaFile';
+    f.innerHTML = '<div>📄 ' + escapeHtml(name) + '</div>' +
+      (src ? '<a href="' + escapeHtml(src) + '" download="' + escapeHtml(name) + '" target="_blank" rel="noopener">下载 / 打开</a>' : '<div style="opacity:.6">文件内容不可用</div>');
+    wrap.appendChild(f);
+  }
+}
+
 function render(m, pop){
   if(m.type === 'sys'){ add(div('sys', escapeHtml(m.text)), pop); return; }
   if(m.type === 'msg'){
     const mine = m.from === nick ? ' mine' : '';
     add(div('msg' + mine, '<span class="from">' + escapeHtml(m.from) + '</span>: ' + escapeHtml(m.text)), pop);
+    return;
+  }
+  if(m.type === 'media'){
+    const mine = m.from === nick ? ' mine' : '';
+    add(buildMediaCard(m, mine, pop), pop);
     return;
   }
   if(m.type === 'rename'){ add(div('sys', escapeHtml(m.from) + ' 改名为 ' + escapeHtml(m.text)), pop); return; }
@@ -311,7 +475,7 @@ function handleIncoming(topic, payload){
     return;
   }
   render(m, true);
-  if(m.type === 'msg'){ history.push(m); saveHistory(); }
+  if(m.type === 'msg' || m.type === 'media'){ history.push(m); saveHistory(); }
 }
 
 BROKERS.forEach((url, i) => {
@@ -365,6 +529,84 @@ function rename(){
   localStorage.setItem('xic_nick', nick);
   publish({ id: Math.random().toString(16).slice(2) + Date.now(), type:'rename', from:old, text:nick });
 }
+
+const MAX_MEDIA_B64 = 180000;
+function publishMedia(kind, src, name){
+  const now = Date.now();
+  if(now < mutedUntil) return;
+  if(now - lastMsgTs < MIN_INTERVAL) return;
+  lastMsgTs = now;
+  msgTimes.push(now);
+  publish({ id: Math.random().toString(16).slice(2) + now, type:'media', from:nick, kind, src, name, ts:now });
+}
+
+function shrinkImage(file, cb){
+  const rd = new FileReader();
+  rd.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      const max = 900;
+      if(w > max || h > max){ const r = Math.min(max/w, max/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      let q = 0.72;
+      let out = c.toDataURL('image/jpeg', q);
+      while(out.length > MAX_MEDIA_B64 && q > 0.18){ q -= 0.12; out = c.toDataURL('image/jpeg', q); }
+      cb(out);
+    };
+    img.onerror = () => cb('');
+    img.src = rd.result;
+  };
+  rd.onerror = () => cb('');
+  rd.readAsDataURL(file);
+}
+
+const attachBtn = document.getElementById('attachBtn');
+const attachFile = document.getElementById('attachFile');
+attachBtn.onclick = () => attachFile.click();
+attachFile.onchange = () => {
+  const f = attachFile.files && attachFile.files[0];
+  attachFile.value = '';
+  if(!f) return;
+  const isImg = /^image\//.test(f.type);
+  const isVid = /^video\//.test(f.type);
+  const kind = isImg ? 'image' : (isVid ? 'video' : 'file');
+  const name = (f.name || '附件').slice(0, 60);
+
+  if(isImg){
+    shrinkImage(f, (src) => {
+      if(!src){ add(div('sys', '图片读取失败。'), true); return; }
+      if(src.length > MAX_MEDIA_B64){ add(div('sys', '图片太大致无法发送，请换小图或贴外链。'), true); return; }
+      publishMedia('image', src, name);
+    });
+    return;
+  }
+
+  if(f.size > MAX_MEDIA_B64){
+    add(div('sys', '文件超过 180KB，纯静态频道无法直传；请贴外链，或改用小文件。'), true);
+    return;
+  }
+  const rd = new FileReader();
+  rd.onload = () => publishMedia(kind, rd.result, name);
+  rd.onerror = () => add(div('sys', '文件读取失败。'), true);
+  rd.readAsDataURL(f);
+};
+
+const blockToggle = document.getElementById('blockToggle');
+function renderBlockBtn(){ blockToggle.textContent = '屏蔽媒体：' + (blockMedia ? '开' : '关'); }
+blockToggle.onclick = () => {
+  blockMedia = !blockMedia;
+  localStorage.setItem('xic_block', blockMedia ? '1' : '0');
+  renderBlockBtn();
+  refreshMediaCards();
+};
+function refreshMediaCards(){
+  box.innerHTML = '';
+  history.forEach(m => render(m));
+}
+renderBlockBtn();
 
 document.getElementById('send').onclick = send;
 document.getElementById('rename').onclick = rename;
@@ -508,6 +750,8 @@ async function resolveAdmin(){
   }
 }
 resolveAdmin();
+};
+if(window.mqtt){ window.__xicBoot(); window.__xicBoot = null; }
 </script>
 </body>
 </html>
