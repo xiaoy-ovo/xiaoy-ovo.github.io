@@ -292,62 +292,94 @@ function buildMediaCard(m, mine, pop){
     '</div>';
 
   const wrap = el.querySelector('.mediaWrap');
-  let stage = 0;
-  wrap.onclick = () => {
-    if(stage === 0){ stage = 1; showGuard(el, wrap, m, safeSrc, name, kind, () => { stage = 0; }); }
-  };
+  wrap.dataset.state = 'idle';
+  wrap.addEventListener('click', () => {
+    if(wrap.dataset.state !== 'idle') return;
+    wrap.dataset.state = 'guard1';
+    showGuard1(wrap, m, safeSrc, name, kind);
+  });
   return el;
 }
 
-function showGuard(card, wrap, m, src, name, kind, onCancel){
-  const g = document.createElement('div');
-  g.className = 'mediaGuard';
-  g.innerHTML =
-    '<div class="warn">⚠️ 可能有不适宜内容，请谨慎观看</div>' +
-    '<div class="desc" id="gd1">第一层防护：你即将查看来自匿名用户的媒体内容。</div>' +
-    '<div class="step" id="gs1">请等待 3 秒后确认</div>' +
-    '<div><button id="gb1" disabled>我已知悉，继续</button> <button class="cancel" id="gc1">取消</button></div>';
-  wrap.innerHTML = '';
-  wrap.appendChild(g);
+function stop(e){ if(e && e.stopPropagation) e.stopPropagation(); }
 
-  let left = 3;
-  const stepEl = g.querySelector('#gs1');
-  const btn = g.querySelector('#gb1');
-  const timer = setInterval(() => {
-    left--;
-    if(left > 0){ stepEl.textContent = '请等待 ' + left + ' 秒后确认'; }
-    else { clearInterval(timer); stepEl.textContent = '现在可以确认'; btn.disabled = false; }
-  }, 1000);
+function armCountdown(stepEl, btn, label, done){
+  const until = Date.now() + 3000;
+  btn.disabled = true;
+  stepEl.textContent = label.replace('%s', '3');
+  const tick = () => {
+    if(!stepEl.isConnected) return;
+    const left = Math.ceil((until - Date.now()) / 1000);
+    if(left > 0){
+      stepEl.textContent = label.replace('%s', String(left));
+      setTimeout(tick, 200);
+    } else {
+      stepEl.textContent = '现在可以确认';
+      btn.disabled = false;
+      done();
+    }
+  };
+  setTimeout(tick, 200);
+}
 
-  g.querySelector('#gc1').onclick = () => { clearInterval(timer); wrap.innerHTML = restorePreview(card, m, src, name, kind); onCancel(); };
-  btn.onclick = () => {
-    clearInterval(timer);
-    const g2 = document.createElement('div');
-    g2.className = 'mediaGuard';
-    g2.innerHTML =
+function backToPreview(wrap, m, src, name, kind){
+  wrap.innerHTML = restorePreview(m, src, name, kind);
+  wrap.dataset.state = 'idle';
+}
+
+function showGuard1(wrap, m, src, name, kind){
+  wrap.innerHTML =
+    '<div class="mediaGuard">' +
+      '<div class="warn">⚠️ 可能有不适宜内容，请谨慎观看</div>' +
+      '<div class="desc">第一层防护：你即将查看来自匿名用户的媒体内容。</div>' +
+      '<div class="step" id="gs1">请等待 3 秒后确认</div>' +
+      '<div><button id="gb1" disabled>我已知悉，继续</button> <button class="cancel" id="gc1">取消</button></div>' +
+    '</div>';
+  const stepEl = wrap.querySelector('#gs1');
+  const btn = wrap.querySelector('#gb1');
+  const cancel = wrap.querySelector('#gc1');
+
+  armCountdown(stepEl, btn, '请等待 %s 秒后确认', () => {});
+
+  btn.addEventListener('click', (e) => {
+    stop(e);
+    if(btn.disabled) return;
+    wrap.dataset.state = 'guard2';
+    showGuard2(wrap, m, src, name, kind);
+  });
+  cancel.addEventListener('click', (e) => {
+    stop(e);
+    backToPreview(wrap, m, src, name, kind);
+  });
+}
+
+function showGuard2(wrap, m, src, name, kind){
+  wrap.innerHTML =
+    '<div class="mediaGuard">' +
       '<div class="warn">⚠️ 可能有不适宜内容，请谨慎观看</div>' +
       '<div class="desc">第二层防护：内容未经审核，确认后即完整显示。</div>' +
       '<div class="step" id="gs2">请等待 3 秒后最终确认</div>' +
-      '<div><button id="gb2" disabled>确认查看</button> <button class="cancel" id="gc2">取消</button></div>';
-    wrap.innerHTML = '';
-    wrap.appendChild(g2);
-    let l2 = 3;
-    const s2 = g2.querySelector('#gs2');
-    const b2 = g2.querySelector('#gb2');
-    const t2 = setInterval(() => {
-      l2--;
-      if(l2 > 0){ s2.textContent = '请等待 ' + l2 + ' 秒后最终确认'; }
-      else { clearInterval(t2); s2.textContent = '现在可以确认'; b2.disabled = false; }
-    }, 1000);
-    g2.querySelector('#gc2').onclick = () => { clearInterval(t2); wrap.innerHTML = restorePreview(card, m, src, name, kind); onCancel(); };
-    b2.onclick = () => {
-      clearInterval(t2);
-      revealMedia(wrap, m, src, name, kind);
-    };
-  };
+      '<div><button id="gb2" disabled>确认查看</button> <button class="cancel" id="gc2">取消</button></div>' +
+    '</div>';
+  const stepEl = wrap.querySelector('#gs2');
+  const btn = wrap.querySelector('#gb2');
+  const cancel = wrap.querySelector('#gc2');
+
+  armCountdown(stepEl, btn, '请等待 %s 秒后最终确认', () => {});
+
+  btn.addEventListener('click', (e) => {
+    stop(e);
+    if(btn.disabled) return;
+    wrap.dataset.state = 'revealed';
+    revealMedia(wrap, m, src, name, kind);
+  });
+  cancel.addEventListener('click', (e) => {
+    stop(e);
+    backToPreview(wrap, m, src, name, kind);
+  });
 }
 
-function restorePreview(card, m, src, name, kind){
+function restorePreview(m, src, name, kind){
   let preview;
   if(kind === 'image' && src) preview = '<img class="mediaBlur pixel" src="' + escapeHtml(src) + '" alt="">';
   else if(kind === 'video' && src) preview = '<div class="mediaBlur" style="background:linear-gradient(135deg,#223,#422)"></div>';
