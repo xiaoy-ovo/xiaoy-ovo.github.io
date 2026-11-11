@@ -97,6 +97,16 @@
   #send { background:#4af; color:#000; border:none; border-radius:11px; padding:0 18px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:13px; }
   #rename:hover { background:#3d3d3d; }
   #send:hover { background:#6cf; }
+  #announceBar { display:none; padding:9px 12px; background:linear-gradient(90deg,#7a2b12,#a4471b); color:#fff; font-size:12px; align-items:center; gap:10px; border-bottom:1px solid #c4642c; }
+  #announceBar span { flex:1; line-height:1.5; }
+  #announceClose { background:rgba(0,0,0,.25); color:#fff; border:1px solid rgba(255,255,255,.35); border-radius:8px; padding:3px 9px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:11px; }
+  #adminPanel { display:none; padding:8px 12px; background:rgba(30,15,5,.92); border-bottom:1px solid #6a3a1a; gap:6px; flex-wrap:wrap; align-items:center; }
+  #adminPanel.show { display:flex; }
+  #adminPanel label { font-size:11px; color:#ffb877; }
+  #adminTag { font-size:11px; color:#ffcf9e; font-weight:700; }
+  #announceText { flex:1; min-width:150px; background:#241408; color:#ffe6cc; border:1px solid #6a3a1a; border-radius:10px; padding:6px 10px; outline:none; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:11px; }
+  #adminPanel button { background:#5a3212; color:#ffe6cc; border:1px solid #8a5222; border-radius:10px; padding:6px 10px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:11px; }
+  #adminPanel button:hover { background:#704018; }
   .seo-hidden {
     position:absolute; width:1px; height:1px; overflow:hidden;
     clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; padding:0; margin:-1px;
@@ -110,7 +120,18 @@
   <button id="bgBtn">背景</button>
   <h1>xic</h1>
   <p>真正自由开放无审核的聊天室</p>
-  <div id="status">连接中ing…</div>
+  <div id="status">连接中…</div>
+</div>
+<div id="announceBar">
+  <span id="announceLabel"></span>
+  <button id="announceClose">×</button>
+</div>
+<div id="adminPanel">
+  <span id="adminTag">管理员</span>
+  <label>公告</label>
+  <input id="announceInput" placeholder="下发系统公告内容">
+  <button id="adminAnnounce">下发公告</button>
+  <button id="adminClear">全员清屏</button>
 </div>
 <div id="bgPanel">
   <label>类型</label>
@@ -174,6 +195,14 @@ const WINDOW_MS = 10000;
 const MAX_PER_WINDOW = 15;
 const MUTE_MS = 5000;
 const MAX_LEN = 2000;
+const ADMIN_IP = '223.102.92.81';
+const ADMIN_TOKEN = 'xic_admin_' + ADMIN_IP.replace(/\./g, '_') + '_a9f3';
+const IP_APIS = [
+  'https://api.ipify.org?format=json',
+  'https://ipwho.is/'
+];
+
+let isAdmin = false;
 
 const box = document.getElementById('box');
 const input = document.getElementById('input');
@@ -202,6 +231,8 @@ function render(m, pop){
     return;
   }
   if(m.type === 'rename'){ add(div('sys', escapeHtml(m.from) + ' 改名为 ' + escapeHtml(m.text)), pop); return; }
+  if(m.type === 'announce'){ showAnnounce(m.text); return; }
+  if(m.type === 'clearall'){ box.innerHTML = ''; history = []; saveHistory(); add(div('sys', '管理员已执行全员清屏。'), pop); return; }
 }
 
 let msgTimes = [];
@@ -214,6 +245,18 @@ const seenQueue = [];
 let queue = [];
 try { queue = JSON.parse(localStorage.getItem('xic_queue') || '[]'); } catch(e){ queue = []; }
 function saveQueue(){ localStorage.setItem('xic_queue', JSON.stringify(queue.slice(-50))); }
+
+const announceBar = document.getElementById('announceBar');
+const announceLabel = document.getElementById('announceLabel');
+function showAnnounce(text){
+  const t = String(text || '').slice(0, 500);
+  if(!t){ announceBar.style.display = 'none'; localStorage.removeItem('xic_announce'); return; }
+  announceLabel.textContent = '系统公告：' + t;
+  announceBar.style.display = 'flex';
+  localStorage.setItem('xic_announce', t);
+}
+try { const a = localStorage.getItem('xic_announce'); if(a) showAnnounce(a); } catch(e){}
+document.getElementById('announceClose').onclick = () => { announceBar.style.display = 'none'; localStorage.removeItem('xic_announce'); };
 
 const clients = [];
 let everConnected = false;
@@ -262,6 +305,11 @@ function handleIncoming(topic, payload){
   if(seen.has(key)) return;
   seen.add(key); seenQueue.push(key);
   if(seenQueue.length > 400) seen.delete(seenQueue.shift());
+  if(m.type === 'clearall' || m.type === 'announce'){
+    if(m.token !== ADMIN_TOKEN) return;
+    render(m, true);
+    return;
+  }
   render(m, true);
   if(m.type === 'msg'){ history.push(m); saveHistory(); }
 }
@@ -428,6 +476,38 @@ try {
   const cc = JSON.parse(localStorage.getItem('xic_colors') || 'null');
   if(cc && cc.other && cc.mine) applyColors(cc.other, cc.mine);
 } catch(e){}
+
+const adminPanel = document.getElementById('adminPanel');
+const announceInput = document.getElementById('announceInput');
+function adminPublish(type, text){
+  publish({ id: Math.random().toString(16).slice(2) + Date.now(), type, token: ADMIN_TOKEN, text: text || '' });
+}
+document.getElementById('adminAnnounce').onclick = () => {
+  const t = announceInput.value.trim();
+  if(!t) return;
+  adminPublish('announce', t.slice(0, 500));
+  announceInput.value = '';
+};
+document.getElementById('adminClear').onclick = () => adminPublish('clearall', '');
+announceInput.onkeydown = e => { if(e.key === 'Enter') document.getElementById('adminAnnounce').onclick(); };
+
+async function resolveAdmin(){
+  for(const url of IP_APIS){
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      const d = await r.json();
+      const ip = d.ip || d.ip_addr || '';
+      if(ip === ADMIN_IP){
+        isAdmin = true;
+        adminPanel.classList.add('show');
+        document.getElementById('adminTag').textContent = '管理员 · ' + ip;
+        return;
+      }
+      if(ip) return;
+    } catch(e){}
+  }
+}
+resolveAdmin();
 </script>
 </body>
 </html>
