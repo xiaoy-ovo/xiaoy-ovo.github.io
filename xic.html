@@ -24,7 +24,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>
 if(!window.mqtt){
@@ -34,7 +34,8 @@ if(!window.mqtt){
 }
 </script>
 <style>
-  body { background:#111; color:#eee; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; margin:0; }
+  body { background:#111; color:#eee; font-family:"Noto Serif SC","Source Han Serif SC","Source Han Serif SC ExtraLight","思源宋体",serif; font-weight:200; margin:0; }
+  *, *::before, *::after, input, select, button, textarea, option { font-family:"Noto Serif SC","Source Han Serif SC","Source Han Serif SC ExtraLight","思源宋体",serif !important; font-weight:200 !important; }
   :root{
     --bubble-bg:rgba(28,28,28,.72); --bubble-color:#eee; --bubble-radius:16px; --bubble-border:1px solid #2a2a2a;
     --my-bg:rgba(28,28,28,.72); --my-color:#eee; --my-radius:16px;
@@ -49,6 +50,16 @@ if(!window.mqtt){
   body[data-bubble="line"]{ --bubble-bg:#fff; --bubble-color:#111; --bubble-radius:12px; --bubble-border:1px solid #ddd; --my-bg:#06c755; --my-color:#fff; --my-radius:12px; --from-color:#06c755; --my-from-color:#e6ffe9; --sys-color:#aaa; }
   body[data-bubble="qq"]{ --bubble-bg:#fff; --bubble-color:#111; --bubble-radius:10px; --bubble-border:1px solid #ddd; --my-bg:#0099ff; --my-color:#fff; --my-radius:10px; --from-color:#12b7f5; --my-from-color:#fff; --sys-color:#aaa; }
   body[data-bubble="whatsapp"]{ --bubble-bg:#202c33; --bubble-color:#e9edef; --bubble-radius:8px 8px 8px 2px; --bubble-border:none; --my-bg:#005c4b; --my-color:#e9edef; --my-radius:8px 8px 2px 8px; --from-color:#53bdeb; --my-from-color:#a9e8c9; --sys-color:#8696a0; --box-bg:rgba(11,20,26,.55); }
+  body[data-bubble="slack"]{ --bubble-bg:#222529; --bubble-color:#e8e8e8; --bubble-radius:8px; --bubble-border:1px solid #35373c; --my-bg:#1264a3; --my-color:#fff; --my-radius:8px; --from-color:#36c5f0; --my-from-color:#cdeaff; --sys-color:#9a9da3; --box-bg:rgba(26,29,33,.5); }
+  body[data-bubble="instagram"]{ --bubble-bg:#262626; --bubble-color:#f5f5f5; --bubble-radius:20px; --bubble-border:1px solid #363636; --my-bg:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045); --my-color:#fff; --my-radius:20px; --from-color:#c77dff; --my-from-color:#fff; --sys-color:#a8a8a8; }
+  body[data-bubble="twitter"]{ --bubble-bg:#202327; --bubble-color:#e7e9ea; --bubble-radius:20px; --bubble-border:none; --my-bg:#1d9bf0; --my-color:#fff; --my-radius:20px 20px 4px 20px; --from-color:#1d9bf0; --my-from-color:#e8f5ff; --sys-color:#71767b; --box-bg:rgba(0,0,0,.35); }
+  body[data-bubble="signal"]{ --bubble-bg:#2c2c2e; --bubble-color:#f2f2f7; --bubble-radius:18px; --bubble-border:none; --my-bg:#3a6ea5; --my-color:#fff; --my-radius:18px; --from-color:#8ab4ff; --my-from-color:#dbe9ff; --sys-color:#8e8e93; }
+  body[data-bubble="skype"]{ --bubble-bg:#eef3f8; --bubble-color:#1f1f1f; --bubble-radius:16px; --bubble-border:1px solid #d5e0ea; --my-bg:#0078d4; --my-color:#fff; --my-radius:16px; --from-color:#0078d4; --my-from-color:#e3f1ff; --sys-color:#7a8b99; }
+  body[data-bubble="viber"]{ --bubble-bg:#f0e6f7; --bubble-color:#2b2b2b; --bubble-radius:16px; --bubble-border:none; --my-bg:#7360f2; --my-color:#fff; --my-radius:16px; --from-color:#7360f2; --my-from-color:#e9e3ff; --sys-color:#9a86ad; }
+  body[data-bubble="snapchat"]{ --bubble-bg:#fffc00; --bubble-color:#111; --bubble-radius:14px; --bubble-border:none; --my-bg:#fff; --my-color:#111; --my-radius:14px; --from-color:#111; --my-from-color:#111; --sys-color:#8a8600; }
+  body[data-bubble="teams"]{ --bubble-bg:#f5f5f5; --bubble-color:#242424; --bubble-radius:10px; --bubble-border:1px solid #e0e0e0; --my-bg:#e8ebfa; --my-color:#242424; --my-radius:10px; --from-color:#5b5fc7; --my-from-color:#5b5fc7; --sys-color:#8a8a8a; }
+  body[data-bubble="reddit"]{ --bubble-bg:#1a1a1b; --bubble-color:#d7dadc; --bubble-radius:12px; --bubble-border:1px solid #343536; --my-bg:#ff4500; --my-color:#fff; --my-radius:12px; --from-color:#ff8b60; --my-from-color:#fff; --sys-color:#818384; --box-bg:rgba(20,20,21,.5); }
+  body[data-bubble="steam"]{ --bubble-bg:#1b2838; --bubble-color:#c7d5e0; --bubble-radius:4px; --bubble-border:1px solid #2a475e; --my-bg:#2a475e; --my-color:#e5f0fa; --my-radius:4px; --from-color:#66c0f4; --my-from-color:#a3d5f5; --sys-color:#6d8296; --box-bg:rgba(12,22,33,.55); }
   #bgLayer { position:fixed; inset:0; z-index:-1; overflow:hidden; background:#111; }
   #bgLayer img, #bgLayer video { width:100%; height:100%; object-fit:cover; display:block; }
   #bgVeil { position:fixed; inset:0; z-index:-1; background:rgba(0,0,0,0); pointer-events:none; }
@@ -145,7 +156,6 @@ if(!window.mqtt){
   .ctxMenu button.adminOnly { display:none; }
   body.is-admin .ctxMenu button.adminOnly { display:block; }
   .ctxMenu .liked { color:#ffcf8f; }
-  .ctxHint { font-size:10px; opacity:.45; margin-top:5px; }
   .quoteBlock { border-left:3px solid var(--from-color); background:rgba(255,255,255,.06); padding:5px 9px; border-radius:7px; font-size:12px; opacity:.82; margin-bottom:6px; max-width:420px; white-space:pre-wrap; }
   .quoteBlock .qf { font-weight:700; color:var(--from-color); }
   .quoteBar { display:none; align-items:center; gap:8px; padding:6px 12px; background:rgba(60,110,170,.25); font-size:12px; color:#cfe6ff; }
@@ -179,6 +189,10 @@ if(!window.mqtt){
   <input id="announceInput" placeholder="下发系统公告内容">
   <button id="adminAnnounce">下发公告</button>
   <button id="adminClear">全员清屏</button>
+  <label>用户</label>
+  <input id="adminUser" placeholder="昵称或设备ID" style="width:150px;background:#241408;color:#ffe6cc;border:1px solid #6a3a1a;border-radius:10px;padding:6px 10px;outline:none;font-size:11px">
+  <button id="adminBan">封禁</button>
+  <button id="adminUnban">解封</button>
 </div>
 <div id="bgPanel">
   <label>类型</label>
@@ -202,6 +216,16 @@ if(!window.mqtt){
     <option value="line">LINE</option>
     <option value="qq">QQ</option>
     <option value="whatsapp">WhatsApp</option>
+    <option value="slack">Slack</option>
+    <option value="instagram">Instagram</option>
+    <option value="twitter">Twitter / X</option>
+    <option value="signal">Signal</option>
+    <option value="skype">Skype</option>
+    <option value="viber">Viber</option>
+    <option value="snapchat">Snapchat</option>
+    <option value="teams">Microsoft Teams</option>
+    <option value="reddit">Reddit</option>
+    <option value="steam">Steam</option>
   </select>
   <label>他人色</label>
   <input id="bgColorOther" type="color" value="#1c1c1c" class="bubble-color">
@@ -310,6 +334,9 @@ try { history = JSON.parse(localStorage.getItem('xic_history') || '[]'); } catch
 if(!Array.isArray(history)) history = [];
 let likes = {};
 try { likes = JSON.parse(localStorage.getItem('xic_likes') || '{}') || {}; } catch(e){ likes = {}; }
+let bans = {};
+try { bans = JSON.parse(localStorage.getItem('xic_bans') || '{}') || {}; } catch(e){ bans = {}; }
+function saveBans(){ localStorage.setItem('xic_bans', JSON.stringify(bans)); idbPut('bans', bans); }
 
 function saveHistory(){
   try { localStorage.setItem('xic_history', JSON.stringify(history)); } catch(e){}
@@ -321,6 +348,8 @@ function saveIdentity(){ localStorage.setItem('xic_nick', nick); localStorage.se
 openDB().then(async () => {
   const dbHist = await idbGet('history');
   if(Array.isArray(dbHist) && dbHist.length > history.length){ history = dbHist; box.innerHTML = ''; history.forEach(m => render(m)); }
+  const dbBans = await idbGet('bans');
+  if(dbBans && typeof dbBans === 'object' && Object.keys(dbBans).length > Object.keys(bans).length){ bans = dbBans; }
   const dbId = await idbGet('identity');
   if(dbId){
     if(!localStorage.getItem('xic_nick') && dbId.nick){ nick = dbId.nick; nameInput.value = nick; }
@@ -528,11 +557,7 @@ function revealMedia(wrap, m, src, name, kind){
   }
 }
 
-function msgToolsHtml(m){
-  const id = m.id || '';
-  const likesN = likes[id] || 0;
-  return '<div class="ctxHint">长按 / 右键 更多 · ' + (likesN ? '👍' + likesN : '') + '</div>';
-}
+function msgToolsHtml(m){ return ''; }
 
 function findMsg(id){ for(let i = history.length - 1; i >= 0; i--){ if(history[i].id === id) return history[i]; } return null; }
 
@@ -580,8 +605,24 @@ function render(m, pop){
     const k = m.target;
     likes[k] = (likes[k] || 0) + 1;
     saveLikes();
-    const nodes = box.querySelectorAll('[data-mid="' + CSS.escape(k) + '"] .ctxHint');
-    nodes.forEach(n => n.textContent = '长按 / 右键 更多 · 👍' + likes[k]);
+    return;
+  }
+  if(m.type === 'setlikes'){
+    likes[m.target] = Math.max(0, parseInt(m.value, 10) || 0);
+    saveLikes();
+    add(div('sys', '管理员已设置一条消息的点赞数为 ' + likes[m.target] + '。'), pop);
+    return;
+  }
+  if(m.type === 'ban'){
+    bans[m.target] = true;
+    saveBans();
+    add(div('sys', '管理员已封禁 ' + m.target + '。'), pop);
+    return;
+  }
+  if(m.type === 'unban'){
+    delete bans[m.target];
+    saveBans();
+    add(div('sys', '管理员已解封 ' + m.target + '。'), pop);
     return;
   }
   if(m.type === 'clearall'){ box.innerHTML = ''; history = []; saveHistory(); add(div('sys', '管理员已执行全员清屏。'), pop); return; }
@@ -621,6 +662,10 @@ function setStatus(){
 }
 
 function publish(payload){
+  if((payload.type === 'msg' || payload.type === 'media' || payload.type === 'like') && (bans[deviceId] || bans[nick])){
+    add(div('sys', '你已被管理员封禁，无法发言。'), true);
+    return false;
+  }
   const buf = JSON.stringify(payload);
   let sent = false;
   for(const c of clients){ if(c.connected){ try { c.publish(TOPIC, buf); sent = true; } catch(e){} } }
@@ -656,6 +701,8 @@ function handleIncoming(topic, payload){
   try { m = JSON.parse(payload.toString()); } catch(e){ return; }
   const key = m.id || (m.type + '|' + m.from + '|' + m.text + '|' + m.ts);
   if(seen.has(key)) return;
+  if(m.dev && bans[m.dev]) return;
+  if(m.from && bans[m.from]) return;
   seen.add(key); seenQueue.push(key);
   if(seenQueue.length > 400) seen.delete(seenQueue.shift());
   if(m.type === 'recall'){
@@ -664,7 +711,7 @@ function handleIncoming(topic, payload){
     render(m, true);
     return;
   }
-  if(m.type === 'clearall' || m.type === 'announce'){
+  if(m.type === 'clearall' || m.type === 'announce' || m.type === 'setlikes' || m.type === 'ban' || m.type === 'unban'){
     if(m.token !== ADMIN_TOKEN) return;
     render(m, true);
     return;
@@ -737,7 +784,7 @@ function send(){
   lastText = t;
   lastMsgTs = now;
   msgTimes.push(now);
-  const payload = { id: deviceId + '_' + now, type:'msg', from:nick, text:t.slice(0, MAX_LEN), ts:now };
+  const payload = { id: deviceId + '_' + now, type:'msg', from:nick, dev:deviceId, text:t.slice(0, MAX_LEN), ts:now };
   if(quoting){ payload.quote = { from: quoting.from, text: quoting.text, name: quoting.name, kind: quoting.kind, recalled: !!quoting.recalled }; }
   publish(payload);
   setQuote(null);
@@ -759,7 +806,7 @@ function publishMedia(kind, src, name){
   if(now - lastMsgTs < MIN_INTERVAL) return;
   lastMsgTs = now;
   msgTimes.push(now);
-  publish({ id: deviceId + '_' + now, type:'media', from:nick, kind, src, name, ts:now });
+  publish({ id: deviceId + '_' + now, type:'media', from:nick, dev:deviceId, kind, src, name, ts:now });
 }
 
 function shrinkImage(file, cb){
@@ -846,10 +893,13 @@ function openCtx(id, x, y){
   ctxTargetId = id;
   const canRecall = m.from === nick && m.ts && (Date.now() - m.ts < 180000);
   const likedClass = likes[id + '_me'] ? ' liked' : '';
-  let html = '<button data-act="quote">💬 引用</button>' +
-    '<button data-act="like" class="' + likedClass + '">👍 点赞 (' + (likes[id] || 0) + ')</button>';
-  if(canRecall) html += '<button data-act="recall" class="danger">↩ 撤回</button>';
-  html += '<button data-act="adminrecall" class="danger adminOnly">⛔ 管理员撤回</button>';
+  let html = '<button data-act="quote">引用</button>' +
+    '<button data-act="like" class="' + likedClass + '">点赞 (' + (likes[id] || 0) + ')</button>';
+  if(canRecall) html += '<button data-act="recall" class="danger">撤回</button>';
+  html += '<button data-act="adminrecall" class="danger adminOnly">管理员撤回</button>';
+  html += '<button data-act="setlikes" class="adminOnly">设置点赞数</button>';
+  html += '<button data-act="ban" class="danger adminOnly">封禁该用户</button>';
+  html += '<button data-act="unban" class="adminOnly">解封该用户</button>';
   ctxMenu.innerHTML = html;
   ctxMenu.style.left = Math.min(x, window.innerWidth - 170) + 'px';
   ctxMenu.style.top = Math.min(y, window.innerHeight - 200) + 'px';
@@ -917,6 +967,23 @@ ctxMenu.addEventListener('click', (e) => {
     const m = findMsg(id);
     if(!m) return;
     doRecall(m, true);
+    return;
+  }
+  if(act === 'setlikes' || act === 'ban' || act === 'unban'){
+    if(!isAdmin) return;
+    const m = findMsg(id);
+    if(!m) return;
+    if(act === 'setlikes'){
+      const v = prompt('设置该消息的点赞数：', String(likes[id] || 0));
+      if(v === null) return;
+      const n = Math.max(0, parseInt(v, 10) || 0);
+      publish({ id: deviceId + '_setlikes_' + Date.now(), type:'setlikes', target:id, value:n, token:ADMIN_TOKEN });
+      render({ type:'setlikes', target:id, value:n }, true);
+      return;
+    }
+    const target = m.dev || m.from;
+    publish({ id: deviceId + '_' + act + '_' + Date.now(), type:act, target, token:ADMIN_TOKEN });
+    render({ type:act, target }, true);
   }
 });
 
@@ -1066,6 +1133,17 @@ document.getElementById('adminAnnounce').onclick = () => {
 };
 document.getElementById('adminClear').onclick = () => adminPublish('clearall', '');
 announceInput.onkeydown = e => { if(e.key === 'Enter') document.getElementById('adminAnnounce').onclick(); };
+
+const adminUser = document.getElementById('adminUser');
+function adminUserAct(type){
+  const t = adminUser.value.trim();
+  if(!t) return;
+  publish({ id: deviceId + '_' + type + '_' + Date.now(), type, target:t, token:ADMIN_TOKEN });
+  render({ type, target:t }, true);
+  adminUser.value = '';
+}
+document.getElementById('adminBan').onclick = () => adminUserAct('ban');
+document.getElementById('adminUnban').onclick = () => adminUserAct('unban');
 
 async function resolveAdmin(){
   for(const url of IP_APIS){
