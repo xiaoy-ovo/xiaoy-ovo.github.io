@@ -137,12 +137,15 @@ if(!window.mqtt){
   .mediaFile a { color:#8ec5ff; word-break:break-all; }
   .mediaBlocked { display:flex; flex-direction:column; justify-content:center; align-items:center; width:230px; height:120px; border-radius:12px; border:1px dashed #555; background:rgba(255,255,255,.03); color:#999; font-size:12px; gap:6px; text-align:center; padding:10px; }
   .mediaBlocked .bi { font-size:22px; }
-  .msgTools { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
-  .msgTools button { background:rgba(255,255,255,.08); color:var(--bubble-color); border:1px solid rgba(255,255,255,.18); border-radius:8px; padding:2px 8px; font-size:11px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; }
-  .msgTools button:hover { background:rgba(255,255,255,.18); }
-  .msgTools .liked { background:rgba(255,180,80,.28); border-color:rgba(255,180,80,.5); }
-  .msgTools .adminOnly { display:none; }
-  body.is-admin .msgTools .adminOnly { display:inline-block; background:rgba(255,90,60,.22); border-color:rgba(255,90,60,.5); }
+  .ctxMenu { position:fixed; z-index:9999; display:none; min-width:150px; background:rgba(20,22,28,.97); border:1px solid rgba(255,255,255,.22); border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,.6); padding:6px; backdrop-filter:blur(18px); }
+  .ctxMenu.show { display:block; }
+  .ctxMenu button { display:block; width:100%; text-align:left; background:transparent; color:#eef3fa; border:none; border-radius:8px; padding:9px 12px; font-size:13px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; }
+  .ctxMenu button:hover { background:rgba(255,255,255,.12); }
+  .ctxMenu button.danger { color:#ff9a86; }
+  .ctxMenu button.adminOnly { display:none; }
+  body.is-admin .ctxMenu button.adminOnly { display:block; }
+  .ctxMenu .liked { color:#ffcf8f; }
+  .ctxHint { font-size:10px; opacity:.45; margin-top:5px; }
   .quoteBlock { border-left:3px solid var(--from-color); background:rgba(255,255,255,.06); padding:5px 9px; border-radius:7px; font-size:12px; opacity:.82; margin-bottom:6px; max-width:420px; white-space:pre-wrap; }
   .quoteBlock .qf { font-weight:700; color:var(--from-color); }
   .quoteBar { display:none; align-items:center; gap:8px; padding:6px 12px; background:rgba(60,110,170,.25); font-size:12px; color:#cfe6ff; }
@@ -234,6 +237,7 @@ if(!window.mqtt){
   <input id="input" placeholder="说点什么…" autofocus>
   <button id="send">发送</button>
 </div>
+<div id="ctxMenu" class="ctxMenu"></div>
 <script>
 const TOPIC = 'xic/global';
 const BROKERS = [
@@ -329,13 +333,36 @@ openDB().then(async () => {
 history.forEach(m => render(m));
 box.scrollTop = box.scrollHeight;
 
+function classifyMedia(m){
+  const declared = m.kind || 'file';
+  const name = String(m.name || '');
+  const src = String(m.src || '');
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const imgExt = ['png','jpg','jpeg','gif','webp','bmp','avif','svg'];
+  const vidExt = ['mp4','webm','ogg','ogv','mov','m4v','3gp'];
+  const srcIsImg = /^data:image\//i.test(src);
+  const srcIsVid = /^data:video\//i.test(src);
+  const extIsImg = imgExt.some(e => ext === e);
+  const extIsVid = vidExt.some(e => ext === e);
+  const extIsOther = ext && !extIsImg && !extIsVid;
+  if(ext === 'svg' || /^data:image\/svg/i.test(src)) return 'file';
+  if(extIsOther || (!srcIsImg && !srcIsVid && !/^https?:\/\//i.test(src))) return 'file';
+  if(srcIsVid || extIsVid) return 'video';
+  if(srcIsImg || extIsImg) return 'image';
+  if(declared === 'image' || declared === 'video') return /^https?:\/\//i.test(src) ? declared : 'file';
+  return 'file';
+}
+
 function buildMediaCard(m, mine, pop){
   const el = document.createElement('div');
   el.className = 'msg' + mine + ' mediaCard';
-  const kind = m.kind || 'file';
+  const kind = classifyMedia(m);
   const name = escapeHtml(m.name || '附件');
   const src = m.src || '';
-  const safeSrc = /^(https?:|data:image\/|data:video\/|blob:)/i.test(src) ? src : '';
+  const isFile = kind === 'file';
+  const safeSrc = isFile
+    ? (/^(https?:|data:|blob:)/i.test(src) ? src : '')
+    : (/^(https?:|data:image\/|data:video\/|blob:)/i.test(src) ? src : '');
   const fromLabel = '<span class="from">' + escapeHtml(m.from) + '</span>';
 
   if(blockMedia){
@@ -344,7 +371,9 @@ function buildMediaCard(m, mine, pop){
   }
 
   let preview;
-  if(kind === 'image' && safeSrc){
+  if(isFile){
+    preview = '<div class="mediaBlur" style="background:repeating-linear-gradient(45deg,#1b1b1b,#1b1b1b 12px,#262626 12px,#262626 24px)"></div>';
+  } else if(kind === 'image' && safeSrc){
     preview = '<img class="mediaBlur pixel" src="' + escapeHtml(safeSrc) + '" alt="">';
   } else if(kind === 'video' && safeSrc){
     preview = '<div class="mediaBlur" style="background:linear-gradient(135deg,#223,#422)"></div>';
@@ -352,17 +381,22 @@ function buildMediaCard(m, mine, pop){
     preview = '<div class="mediaBlur" style="background:repeating-linear-gradient(45deg,#1b1b1b,#1b1b1b 12px,#262626 12px,#262626 24px)"></div>';
   }
 
+  const shade = isFile
+    ? '<div class="mediaShade"><div class="lk">📄 文件附件</div><div class="sub">此类内容只能下载，不在线预览</div><div class="tag">' + name + '</div></div>'
+    : '<div class="mediaShade"><div class="lk">🔒 内容已模糊处理</div><div class="sub">可能有不适宜内容，请谨慎观看</div><div class="tag">' + name + ' · 点击查看</div></div>';
+
   el.innerHTML = fromLabel +
-    '<div class="mediaWrap">' + preview +
-      '<div class="mediaShade">' +
-        '<div class="lk">🔒 内容已模糊处理</div>' +
-        '<div class="sub">可能有不适宜内容，请谨慎观看</div>' +
-        '<div class="tag">' + name + ' · 点击查看</div>' +
-      '</div>' +
-    '</div>';
+    '<div class="mediaWrap">' + preview + shade + '</div>';
 
   const wrap = el.querySelector('.mediaWrap');
-  wrap.dataset.state = 'idle';
+  wrap.dataset.state = isFile ? 'file' : 'idle';
+  if(isFile){
+    el.insertAdjacentHTML('beforeend',
+      '<div class="mediaFile" style="padding:8px 4px">' +
+        (safeSrc ? '<a href="' + escapeHtml(safeSrc) + '" download="' + escapeHtml(m.name || '附件') + '">⬇ 下载 ' + escapeHtml(m.name || '附件') + '</a>' : '<span style="opacity:.6">文件内容不可用</span>') +
+      '</div>');
+    return el;
+  }
   wrap.addEventListener('click', () => {
     if(wrap.dataset.state !== 'idle') return;
     wrap.dataset.state = 'guard1';
@@ -450,9 +484,10 @@ function showGuard2(wrap, m, src, name, kind){
 }
 
 function restorePreview(m, src, name, kind){
+  const k = classifyMedia(m);
   let preview;
-  if(kind === 'image' && src) preview = '<img class="mediaBlur pixel" src="' + escapeHtml(src) + '" alt="">';
-  else if(kind === 'video' && src) preview = '<div class="mediaBlur" style="background:linear-gradient(135deg,#223,#422)"></div>';
+  if(k === 'image' && src) preview = '<img class="mediaBlur pixel" src="' + escapeHtml(src) + '" alt="">';
+  else if(k === 'video' && src) preview = '<div class="mediaBlur" style="background:linear-gradient(135deg,#223,#422)"></div>';
   else preview = '<div class="mediaBlur" style="background:repeating-linear-gradient(45deg,#1b1b1b,#1b1b1b 12px,#262626 12px,#262626 24px)"></div>';
   return preview +
     '<div class="mediaShade"><div class="lk">🔒 内容已模糊处理</div>' +
@@ -461,16 +496,25 @@ function restorePreview(m, src, name, kind){
 }
 
 function revealMedia(wrap, m, src, name, kind){
+  const k = classifyMedia(m);
   wrap.innerHTML = '';
   wrap.style.width = '320px';
   wrap.style.height = '240px';
   wrap.style.cursor = 'default';
-  if(kind === 'image' && src){
+  if(k === 'file'){
+    const f = document.createElement('div');
+    f.className = 'mediaFile';
+    f.innerHTML = '<div>📄 ' + escapeHtml(name) + '</div><div style="opacity:.7;font-size:11px">文件只能下载，不在线预览</div>' +
+      (src ? '<a href="' + escapeHtml(src) + '" download="' + escapeHtml(name) + '">⬇ 下载</a>' : '<div style="opacity:.6">文件内容不可用</div>');
+    wrap.appendChild(f);
+    return;
+  }
+  if(k === 'image' && src){
     const img = document.createElement('img');
     img.className = 'mediaFull';
     img.src = src;
     wrap.appendChild(img);
-  } else if(kind === 'video' && src){
+  } else if(k === 'video' && src){
     const v = document.createElement('video');
     v.className = 'mediaFull';
     v.src = src; v.controls = true; v.autoplay = true; v.loop = true; v.muted = true; v.playsInline = true;
@@ -487,17 +531,7 @@ function revealMedia(wrap, m, src, name, kind){
 function msgToolsHtml(m){
   const id = m.id || '';
   const likesN = likes[id] || 0;
-  const liked = likes[id + '_me'] ? ' liked' : '';
-  const canRecallSelf = m.from === nick && m.ts && (Date.now() - m.ts < 180000);
-  const recallBtn = canRecallSelf
-    ? '<button data-act="recall" data-id="' + escapeHtml(id) + '">撤回</button>'
-    : '';
-  return '<div class="msgTools">' +
-    '<button data-act="quote" data-id="' + escapeHtml(id) + '">引用</button>' +
-    '<button data-act="like" data-id="' + escapeHtml(id) + '" class="' + liked + '">点赞 <span class="likeCount">' + likesN + '</span></button>' +
-    recallBtn +
-    '<button data-act="adminrecall" data-id="' + escapeHtml(id) + '" class="adminOnly">管理员撤回</button>' +
-  '</div>';
+  return '<div class="ctxHint">长按 / 右键 更多 · ' + (likesN ? '👍' + likesN : '') + '</div>';
 }
 
 function findMsg(id){ for(let i = history.length - 1; i >= 0; i--){ if(history[i].id === id) return history[i]; } return null; }
@@ -546,8 +580,8 @@ function render(m, pop){
     const k = m.target;
     likes[k] = (likes[k] || 0) + 1;
     saveLikes();
-    const nodes = box.querySelectorAll('[data-mid="' + CSS.escape(k) + '"] .likeCount');
-    nodes.forEach(n => n.textContent = likes[k]);
+    const nodes = box.querySelectorAll('[data-mid="' + CSS.escape(k) + '"] .ctxHint');
+    nodes.forEach(n => n.textContent = '长按 / 右键 更多 · 👍' + likes[k]);
     return;
   }
   if(m.type === 'clearall'){ box.innerHTML = ''; history = []; saveHistory(); add(div('sys', '管理员已执行全员清屏。'), pop); return; }
@@ -758,10 +792,13 @@ attachFile.onchange = () => {
   const f = attachFile.files && attachFile.files[0];
   attachFile.value = '';
   if(!f) return;
-  const isImg = /^image\//.test(f.type);
-  const isVid = /^video\//.test(f.type);
-  const kind = isImg ? 'image' : (isVid ? 'video' : 'file');
   const name = (f.name || '附件').slice(0, 60);
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const imgExt = ['png','jpg','jpeg','gif','webp','bmp','avif'];
+  const vidExt = ['mp4','webm','ogg','ogv','mov','m4v','3gp'];
+  const isImg = /^image\//.test(f.type) && imgExt.includes(ext);
+  const isVid = /^video\//.test(f.type) && vidExt.includes(ext);
+  const kind = isImg ? 'image' : (isVid ? 'video' : 'file');
 
   if(isImg){
     shrinkImage(f, (src) => {
@@ -796,12 +833,69 @@ function refreshMediaCards(){
 }
 renderBlockBtn();
 
-box.addEventListener('click', (e) => {
-  const btn = e.target.closest('.msgTools button');
+const ctxMenu = document.getElementById('ctxMenu');
+let ctxTargetId = null;
+let pressTimer = null;
+let pressStart = null;
+
+function hideCtx(){ ctxMenu.classList.remove('show'); ctxTargetId = null; }
+
+function openCtx(id, x, y){
+  const m = findMsg(id);
+  if(!m || m.recalled){ hideCtx(); return; }
+  ctxTargetId = id;
+  const canRecall = m.from === nick && m.ts && (Date.now() - m.ts < 180000);
+  const likedClass = likes[id + '_me'] ? ' liked' : '';
+  let html = '<button data-act="quote">💬 引用</button>' +
+    '<button data-act="like" class="' + likedClass + '">👍 点赞 (' + (likes[id] || 0) + ')</button>';
+  if(canRecall) html += '<button data-act="recall" class="danger">↩ 撤回</button>';
+  html += '<button data-act="adminrecall" class="danger adminOnly">⛔ 管理员撤回</button>';
+  ctxMenu.innerHTML = html;
+  ctxMenu.style.left = Math.min(x, window.innerWidth - 170) + 'px';
+  ctxMenu.style.top = Math.min(y, window.innerHeight - 200) + 'px';
+  ctxMenu.classList.add('show');
+  ctxOpenedAt = Date.now();
+}
+
+function messageIdFromEvent(e){
+  const node = e.target.closest('#box > div[data-mid]');
+  return node ? node.dataset.mid : null;
+}
+
+box.addEventListener('contextmenu', (e) => {
+  const id = messageIdFromEvent(e);
+  if(!id) return;
+  e.preventDefault();
+  hideCtx();
+  openCtx(id, e.clientX, e.clientY);
+});
+
+function beginPress(e){
+  const id = messageIdFromEvent(e);
+  if(!id) return;
+  if(e.target.closest('.mediaWrap') || e.target.closest('a') || e.target.closest('button')) return;
+  pressStart = { x: e.clientX, y: e.clientY };
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => { openCtx(id, e.clientX, e.clientY); pressTimer = null; }, 500);
+}
+function endPress(){
+  clearTimeout(pressTimer);
+  pressTimer = null;
+}
+box.addEventListener('pointerdown', beginPress);
+box.addEventListener('pointerup', endPress);
+box.addEventListener('pointercancel', endPress);
+box.addEventListener('pointermove', (e) => {
+  if(pressStart && (Math.abs(e.clientX - pressStart.x) > 8 || Math.abs(e.clientY - pressStart.y) > 8)) endPress();
+});
+box.addEventListener('scroll', endPress);
+
+ctxMenu.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
   if(!btn) return;
-  e.stopPropagation();
+  const id = ctxTargetId;
   const act = btn.dataset.act;
-  const id = btn.dataset.id;
+  hideCtx();
   if(!id) return;
   if(act === 'quote'){ setQuote(findMsg(id)); return; }
   if(act === 'like'){
@@ -824,6 +918,16 @@ box.addEventListener('click', (e) => {
     if(!m) return;
     doRecall(m, true);
   }
+});
+
+let ctxOpenedAt = 0;
+document.addEventListener('pointerdown', (e) => {
+  if(ctxMenu.contains(e.target)) return;
+  if(Date.now() - ctxOpenedAt < 250) return;
+  hideCtx();
+}, true);
+document.addEventListener('contextmenu', (e) => {
+  if(!e.target.closest('#box')) hideCtx();
 });
 
 function doRecall(m, admin){
