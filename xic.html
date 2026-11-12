@@ -24,14 +24,20 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400&display=swap" media="print" onload="this.media='all'">
 <script>
-if(!window.mqtt){
-  var s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';
-  document.head.appendChild(s);
-}
+(function(){
+  var a = document.createElement('script');
+  a.src = 'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
+  a.async = true;
+  a.onerror = function(){
+    var b = document.createElement('script');
+    b.src = 'https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';
+    b.async = true;
+    document.head.appendChild(b);
+  };
+  document.head.appendChild(a);
+})();
 </script>
 <style>
   body { background:#111; color:#eee; font-family:"Noto Serif SC","Source Han Serif SC","Source Han Serif SC ExtraLight","思源宋体",serif; font-weight:200; margin:0; }
@@ -82,7 +88,7 @@ if(!window.mqtt){
   #bgColorReset { background:#333; color:#eee; border:1px solid #444; border-radius:10px; padding:6px 10px; cursor:pointer; font-family:"Noto Serif SC","Source Han Serif SC","思源宋体",serif; font-size:11px; }
   #bgColorReset:hover { background:#3d3d3d; }
   #box { height:64vh; overflow-y:auto; padding:10px 12px; background:var(--box-bg); }
-  #box > div { position:relative; margin:7px 0; padding:7px 12px; border-radius:var(--bubble-radius); background:var(--bubble-bg); color:var(--bubble-color); border:var(--bubble-border); width:fit-content; max-width:80%; word-break:break-all; line-height:1.5; backdrop-filter:blur(6px); }
+  #box > div { position:relative; margin:7px 0; padding:7px 12px; border-radius:var(--bubble-radius); background:var(--bubble-bg); color:var(--bubble-color); border:var(--bubble-border); width:fit-content; max-width:80%; word-break:break-all; line-height:1.5; backdrop-filter:blur(6px); font-size:var(--chat-font, 13px); }
   @keyframes bubblePop{
     0%{opacity:0; transform:scale(.7) translateY(18px);}
     55%{opacity:1;}
@@ -159,6 +165,56 @@ if(!window.mqtt){
   #box > div.hasLike { margin-bottom:26px; }
   .likeBadge { position:absolute; top:100%; left:4px; margin-top:4px; font-size:11px; line-height:1; opacity:.62; color:var(--from-color); white-space:nowrap; pointer-events:none; }
   #box > div.mine .likeBadge { left:auto; right:4px; }
+  .msg a { color:#8ec5ff; text-decoration:underline; }
+  .mention { color:#ffcf8f; background:rgba(255,200,120,.14); border-radius:5px; padding:0 3px; }
+  #typingBar { height:16px; padding:0 12px; font-size:10px; color:#8fd0ff; opacity:.8; }
+  #searchBar { display:none; padding:6px 12px; background:rgba(10,10,10,.9); border-top:1px solid #333; gap:6px; align-items:center; }
+  #searchBar.show { display:flex; }
+  #searchInput { flex:1; background:#222; color:#eee; border:1px solid #3a3a3a; border-radius:10px; padding:6px 10px; outline:none; font-size:12px; }
+  #searchCount { font-size:11px; color:#aaa; min-width:60px; }
+  #searchBar button { background:#333; color:#eee; border:1px solid #444; border-radius:10px; padding:6px 10px; cursor:pointer; font-size:11px; }
+  .searchHit { outline:2px solid #ffb877; outline-offset:2px; }
+  #jumpBtn { display:none; position:fixed; right:18px; bottom:110px; z-index:50; background:#4aa8ff; color:#04121f; border:none; border-radius:20px; padding:9px 16px; cursor:pointer; font-size:12px; box-shadow:0 8px 24px rgba(0,0,0,.5); }
+  #toast { position:fixed; left:50%; top:20px; transform:translateX(-50%); z-index:9999; background:rgba(20,24,32,.95); color:#eef3fa; border:1px solid rgba(255,255,255,.2); border-radius:12px; padding:9px 18px; font-size:12px; opacity:0; transition:opacity .25s; pointer-events:none; }
+  #toast.show { opacity:1; }
+  @media (max-width: 900px), (pointer: coarse) {
+    #head { padding:10px 14px; }
+    #head h1 { font-size:18px; }
+    #head p { font-size:11px; }
+    #bgBtn { padding:7px 14px; font-size:12px; }
+    #bgPanel { padding:10px 14px; gap:8px; }
+    #bgPanel label, #bgPanel select, #bgPanel button, #bgPick, .bubble-pick, #bgColorReset, #bgUrl { font-size:12px; padding:9px 12px; }
+    .bubble-color { width:34px; height:34px; }
+    #box { height:52vh; padding:10px 14px; }
+    #box > div { max-width:88%; font-size:var(--chat-font, 13px); padding:10px 14px; }
+    .mediaWrap { width:min(78vw, 280px); height:min(52vw, 190px); }
+    .mediaBlocked { width:min(78vw, 280px); }
+    #namebar, #bar { padding:8px 14px; gap:8px; }
+    #name { width:38%; font-size:13px; padding:11px 12px; }
+    #name::placeholder { font-size:12px; }
+    #input { font-size:15px; padding:12px 14px; }
+    #rename, #send, #attachBtn { font-size:14px; padding:12px 16px; }
+    body #toolRow { padding:8px 14px; gap:8px; }
+    body #toolRow button { font-size:12px; padding:8px 12px; }
+    #ctxMenu { min-width:170px; }
+    .ctxMenu button { padding:12px 14px; font-size:14px; }
+    #jumpBtn { bottom:150px; right:14px; }
+    .quoteBar { font-size:12px; }
+    .mediaGuard .warn { font-size:13px; }
+    #announceBar, #adminPanel, #searchBar { padding:10px 14px; }
+  }
+  @media (max-width: 560px) {
+    #head p { display:none; }
+    #box { height:48vh; }
+    #name { width:44%; }
+    #toolRow button { flex:1 1 auto; text-align:center; }
+    .mediaWrap { width:86vw; height:56vw; }
+    #ctxMenu { min-width:min(200px, 88vw); }
+    #typingBar { font-size:11px; }
+  }
+  #toolRow { display:flex; gap:6px; padding:5px 12px; background:rgba(0,0,0,.55); flex-wrap:wrap; }
+  #toolRow button { background:#222; color:#ccc; border:1px solid #3a3a3a; border-radius:9px; padding:4px 10px; cursor:pointer; font-size:11px; }
+  #toolRow button:hover { background:#333; color:#fff; }
   .quoteBlock { border-left:3px solid var(--from-color); background:rgba(255,255,255,.06); padding:5px 9px; border-radius:7px; font-size:12px; opacity:.82; margin-bottom:6px; max-width:420px; white-space:pre-wrap; }
   .quoteBlock .qf { font-weight:700; color:var(--from-color); }
   .quoteBar { display:none; align-items:center; gap:8px; padding:6px 12px; background:rgba(60,110,170,.25); font-size:12px; color:#cfe6ff; }
@@ -167,6 +223,7 @@ if(!window.mqtt){
   .quoteBar button { background:#456; color:#fff; border:none; border-radius:8px; padding:3px 9px; cursor:pointer; font-size:11px; }
   .recalled { font-style:italic; opacity:.55; font-size:12px; }
   .likeCount { font-size:11px; opacity:.75; margin-left:4px; }
+  #onlineBar { font-size:10px; color:#7fe0a0; margin-top:2px; }
   .seo-hidden {
     position:absolute; width:1px; height:1px; overflow:hidden;
     clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; padding:0; margin:-1px;
@@ -181,6 +238,7 @@ if(!window.mqtt){
   <h1>xic</h1>
   <p>真正自由开放无审核的聊天室</p>
   <div id="status">连接中…</div>
+  <div id="onlineBar">在线 · 1</div>
 </div>
 <div id="announceBar">
   <span id="announceLabel"></span>
@@ -250,10 +308,28 @@ if(!window.mqtt){
   </ul>
 </div>
 <div id="box"></div>
+<div id="typingBar"></div>
+<div id="jumpBtn">↓ 有新消息</div>
+<div id="searchBar">
+  <input id="searchInput" placeholder="搜索聊天记录">
+  <span id="searchCount"></span>
+  <button id="searchPrev">上一个</button>
+  <button id="searchNext">下一个</button>
+  <button id="searchClose">关闭</button>
+</div>
 <div id="quoteBar" class="quoteBar">
   <span id="quoteText"></span>
   <button id="quoteCancel">取消引用</button>
 </div>
+<div id="toolRow">
+  <button id="tSearch">搜索</button>
+  <button id="tExport">导出记录</button>
+  <button id="tClear">本地清空</button>
+  <button id="tFontA">字号 +</button>
+  <button id="tFontB">字号 −</button>
+  <button id="tHelp">命令</button>
+</div>
+<div id="toast"></div>
 <div id="namebar">
   <input id="name" placeholder="你的名字">
   <button id="rename">改名</button>
@@ -286,6 +362,9 @@ const IP_APIS = [
 
 let isAdmin = false;
 let blockMedia = localStorage.getItem('xic_block') === '1';
+let fontSize = parseInt(localStorage.getItem('xic_font') || '13', 10);
+const presence = new Map();
+const typingMap = new Map();
 
 const box = document.getElementById('box');
 const input = document.getElementById('input');
@@ -293,8 +372,31 @@ const nameInput = document.getElementById('name');
 const statusEl = document.getElementById('status');
 
 function escapeHtml(s){ return String(s).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-function add(div, pop){ if(pop && (div.classList.contains('msg') || div.classList.contains('sys'))) div.classList.add('pop'); box.appendChild(div); box.scrollTop = box.scrollHeight; }
+function richText(s){
+  let h = escapeHtml(s);
+  h = h.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  h = h.replace(/(^|\s)@([\w\u4e00-\u9fa5]{1,20})/g, '$1<span class="mention">@$2</span>');
+  return h;
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+function add(div, pop){ if(pop && (div.classList.contains('msg') || div.classList.contains('sys'))) div.classList.add('pop'); box.appendChild(div); scrollDecision(div); }
 function div(cls, html){ const x=document.createElement('div'); x.className=cls; x.innerHTML=html; return x; }
+
+let unread = 0;
+const jumpBtn = document.getElementById('jumpBtn');
+function scrollDecision(){
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  if(nearBottom){ box.scrollTop = box.scrollHeight; unread = 0; jumpBtn.style.display = 'none'; }
+  else { unread++; jumpBtn.style.display = 'block'; jumpBtn.textContent = '↓ ' + unread + ' 条新消息'; }
+}
+jumpBtn.onclick = () => { box.scrollTop = box.scrollHeight; unread = 0; jumpBtn.style.display = 'none'; };
+box.addEventListener('scroll', () => { if(box.scrollHeight - box.scrollTop - box.clientHeight < 120){ unread = 0; jumpBtn.style.display = 'none'; } });
 
 let deviceId = localStorage.getItem('xic_device');
 if(!deviceId){
@@ -362,8 +464,16 @@ openDB().then(async () => {
   }
 });
 
-history.forEach(m => render(m));
+const firstBatch = history.slice(-80);
+firstBatch.forEach(m => render(m));
 box.scrollTop = box.scrollHeight;
+if(history.length > 80){
+  setTimeout(() => {
+    box.innerHTML = '';
+    history.forEach(m => render(m));
+    box.scrollTop = box.scrollHeight;
+  }, 150);
+}
 
 function classifyMedia(m){
   const declared = m.kind || 'file';
@@ -585,7 +695,7 @@ function findMsg(id){ for(let i = history.length - 1; i >= 0; i--){ if(history[i
 
 function quoteBlockHtml(m){
   if(!m) return '';
-  const label = m.recalled ? '[已撤回]' : (m.kind ? '[媒体] ' + escapeHtml(m.name || '') : escapeHtml(String(m.text || '').slice(0, 120)));
+  const label = m.recalled ? '[已撤回]' : (m.kind ? '[媒体] ' + escapeHtml(m.name || '') : richText(String(m.text || '').slice(0, 120)));
   return '<div class="quoteBlock"><span class="qf">' + escapeHtml(m.from) + '</span>：' + label + '</div>';
 }
 
@@ -601,7 +711,7 @@ function render(m, pop){
       el = buildMediaCard(m, mine, pop);
     } else {
       const qb = m.quote ? quoteBlockHtml(m.quote) : '';
-      el = div('msg' + mine, '<span class="from">' + escapeHtml(m.from) + '</span>: ' + escapeHtml(m.text));
+      el = div('msg' + mine, '<span class="from">' + escapeHtml(m.from) + '</span>: ' + richText(m.text));
       if(qb) el.insertAdjacentHTML('afterbegin', qb);
     }
     if(!m.recalled){
@@ -697,6 +807,7 @@ function publish(payload){
   let sent = false;
   for(const c of clients){ if(c.connected){ try { c.publish(TOPIC, buf); sent = true; } catch(e){} } }
   if(!sent){
+    if(payload.type === 'presence' || payload.type === 'typing') return false;
     const id = Math.random().toString(16).slice(2) + Date.now();
     queue.push({ id, payload: buf });
     saveQueue();
@@ -744,9 +855,36 @@ function handleIncoming(topic, payload){
     return;
   }
   if(m.type === 'like'){ render(m, true); return; }
+  if(m.type === 'presence'){
+    if(m.dev){ presence.set(m.dev, { from:m.from, ts:Date.now() }); }
+    renderOnline();
+    return;
+  }
+  if(m.type === 'typing'){
+    if(m.dev){ typingMap.set(m.dev, { from:m.from, ts:Date.now() }); renderTyping(); }
+    return;
+  }
   render(m, true);
   if(m.type === 'msg' || m.type === 'media'){ history.push(m); saveHistory(); }
 }
+
+function renderOnline(){
+  const now = Date.now();
+  for(const [k,v] of presence){ if(now - v.ts > 60000) presence.delete(k); }
+  presence.set(deviceId, { from:nick, ts:now });
+  document.getElementById('onlineBar').textContent = '在线 · ' + presence.size;
+}
+function renderTyping(){
+  const now = Date.now();
+  for(const [k,v] of typingMap){ if(now - v.ts > 4000) typingMap.delete(k); }
+  const others = [...typingMap.entries()].filter(([k]) => k !== deviceId);
+  document.getElementById('typingBar').textContent = others.length ? (others[0][1].from + (others.length > 1 ? ' 等 ' + others.length + ' 人' : '') + ' 正在输入…') : '';
+}
+setInterval(() => {
+  publish({ id: deviceId + '_p_' + Date.now(), type:'presence', from:nick, dev:deviceId });
+  renderOnline();
+  renderTyping();
+}, 12000);
 
 function connectAll(){
   if(connectionStarted) return;
@@ -802,6 +940,7 @@ document.getElementById('quoteCancel').onclick = () => setQuote(null);
 function send(){
   const t = input.value;
   if(!t.trim()) return;
+  if(t.trim().startsWith('/')){ runCommand(t.trim()); input.value = ''; return; }
   const now = Date.now();
   if(now < mutedUntil) return;
   if(now - lastMsgTs < MIN_INTERVAL) return;
@@ -907,6 +1046,123 @@ function refreshMediaCards(){
 }
 renderBlockBtn();
 
+function applyFontSize(){
+  document.documentElement.style.setProperty('--chat-font', fontSize + 'px');
+  localStorage.setItem('xic_font', String(fontSize));
+}
+applyFontSize();
+
+function runCommand(raw){
+  const [cmd, ...args] = raw.slice(1).split(/\s+/);
+  const c = (cmd || '').toLowerCase();
+  if(c === 'nick'){
+    const n = args.join(' ').trim().slice(0, 24);
+    if(!n){ toast('用法：/nick 新名字'); return; }
+    const old = nick; nick = n; saveIdentity(); nameInput.value = n;
+    publish({ id: deviceId + '_rename_' + Date.now(), type:'rename', from:old, text:nick });
+    toast('已改名为 ' + nick);
+    return;
+  }
+  if(c === 'clear'){ localClear(); return; }
+  if(c === 'export'){ exportHistory(); return; }
+  if(c === 'search'){ toggleSearch(); return; }
+  if(c === 'help' || c === '?'){
+    toast('/nick 名字 · /clear 本地清空 · /export 导出 · /search 搜索 · /shrug · /me 动作');
+    return;
+  }
+  if(c === 'shrug'){ input.value = '¯\\_(ツ)_/¯'; return; }
+  if(c === 'me'){
+    const act = args.join(' ').trim().slice(0, 200);
+    if(!act) return;
+    publish({ id: deviceId + '_' + Date.now(), type:'msg', from:nick, dev:deviceId, text:'* ' + act, ts:Date.now() });
+    return;
+  }
+  toast('未知命令：' + raw + '（/help 查看）');
+}
+
+function localClear(){
+  box.innerHTML = '';
+  history = [];
+  saveHistory();
+  toast('本地记录已清空（其他人不受影响）');
+}
+function exportHistory(){
+  const lines = history.map(m => {
+    const t = m.ts ? new Date(m.ts).toLocaleString() : '';
+    if(m.type === 'msg') return '[' + t + '] ' + m.from + '：' + (m.recalled ? '[已撤回]' : m.text);
+    if(m.type === 'media') return '[' + t + '] ' + m.from + '：[媒体] ' + (m.name || '');
+    return null;
+  }).filter(Boolean);
+  const blob = new Blob([lines.join('\n')], { type:'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'xic-chat-' + Date.now() + '.txt';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('已导出 ' + lines.length + ' 条记录');
+}
+
+const searchBar = document.getElementById('searchBar');
+const searchInput = document.getElementById('searchInput');
+const searchCount = document.getElementById('searchCount');
+let searchHits = [];
+let searchIdx = -1;
+function clearSearchHighlights(){ box.querySelectorAll('.searchHit').forEach(n => n.classList.remove('searchHit')); }
+function doSearch(){
+  clearSearchHighlights();
+  const q = searchInput.value.trim().toLowerCase();
+  if(!q){ searchCount.textContent = ''; searchHits = []; searchIdx = -1; return; }
+  searchHits = [...box.querySelectorAll('#box > div[data-mid]')].filter(n => n.textContent.toLowerCase().includes(q));
+  searchHits.forEach(n => n.classList.add('searchHit'));
+  searchIdx = searchHits.length ? 0 : -1;
+  searchCount.textContent = searchHits.length ? (searchIdx + 1) + '/' + searchHits.length : '无结果';
+  if(searchHits.length) searchHits[0].scrollIntoView({ block:'center', behavior:'smooth' });
+}
+function moveSearch(d){
+  if(!searchHits.length) return;
+  searchIdx = (searchIdx + d + searchHits.length) % searchHits.length;
+  searchHits[searchIdx].scrollIntoView({ block:'center', behavior:'smooth' });
+  searchCount.textContent = (searchIdx + 1) + '/' + searchHits.length;
+}
+function toggleSearch(){
+  searchBar.classList.toggle('show');
+  if(searchBar.classList.contains('show')){ searchInput.focus(); doSearch(); }
+  else { clearSearchHighlights(); searchCount.textContent = ''; }
+}
+searchInput.oninput = doSearch;
+searchInput.onkeydown = e => { if(e.key === 'Enter') moveSearch(e.shiftKey ? -1 : 1); if(e.key === 'Escape') toggleSearch(); };
+document.getElementById('searchPrev').onclick = () => moveSearch(-1);
+document.getElementById('searchNext').onclick = () => moveSearch(1);
+document.getElementById('searchClose').onclick = toggleSearch;
+
+document.getElementById('tSearch').onclick = toggleSearch;
+document.getElementById('tExport').onclick = exportHistory;
+document.getElementById('tClear').onclick = localClear;
+document.getElementById('tFontA').onclick = () => { fontSize = Math.min(22, fontSize + 1); applyFontSize(); toast('字号 ' + fontSize); };
+document.getElementById('tFontB').onclick = () => { fontSize = Math.max(10, fontSize - 1); applyFontSize(); toast('字号 ' + fontSize); };
+document.getElementById('tHelp').onclick = () => toast('/nick · /clear · /export · /search · /shrug · /me · /help');
+
+let lastTypingSent = 0;
+input.addEventListener('input', () => {
+  const now = Date.now();
+  if(now - lastTypingSent < 1800) return;
+  lastTypingSent = now;
+  publish({ id: deviceId + '_t_' + now, type:'typing', from:nick, dev:deviceId });
+});
+input.addEventListener('keydown', e => { if(e.key === 'Escape'){ setQuote(null); } });
+
+box.addEventListener('dblclick', (e) => {
+  const node = e.target.closest('#box > div[data-mid]');
+  if(!node || e.target.closest('.mediaWrap') || e.target.closest('a') || e.target.closest('button')) return;
+  const id = node.dataset.mid;
+  if(likes[id + '_me']) return;
+  likes[id + '_me'] = 1;
+  saveLikes();
+  publish({ id: deviceId + '_like_' + Date.now(), type:'like', target:id, by:deviceId });
+  render({ type:'like', target:id });
+  toast('已点赞');
+});
+
 const ctxMenu = document.getElementById('ctxMenu');
 let ctxTargetId = null;
 let pressTimer = null;
@@ -920,7 +1176,8 @@ function openCtx(id, x, y){
   ctxTargetId = id;
   const canRecall = m.from === nick && m.ts && (Date.now() - m.ts < 180000);
   const likedClass = likes[id + '_me'] ? ' liked' : '';
-  let html = '<button data-act="quote">引用</button>' +
+  let html = '<button data-act="copy">复制</button>' +
+    '<button data-act="quote">引用</button>' +
     '<button data-act="like" class="' + likedClass + '">点赞 (' + (likes[id] || 0) + ')</button>';
   if(canRecall) html += '<button data-act="recall" class="danger">撤回</button>';
   html += '<button data-act="adminrecall" class="danger adminOnly">管理员撤回</button>';
@@ -974,6 +1231,11 @@ ctxMenu.addEventListener('click', (e) => {
   const act = btn.dataset.act;
   hideCtx();
   if(!id) return;
+  if(act === 'copy'){
+    const m = findMsg(id);
+    if(m){ try { navigator.clipboard.writeText(m.text || m.name || ''); toast('已复制'); } catch(e){ toast('复制失败'); } }
+    return;
+  }
   if(act === 'quote'){ setQuote(findMsg(id)); return; }
   if(act === 'like'){
     if(likes[id + '_me']) return;
