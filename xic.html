@@ -177,6 +177,8 @@
   #jumpBtn { display:none; position:fixed; right:18px; bottom:110px; z-index:50; background:#4aa8ff; color:#04121f; border:none; border-radius:20px; padding:9px 16px; cursor:pointer; font-size:12px; box-shadow:0 8px 24px rgba(0,0,0,.5); }
   #toast { position:fixed; left:50%; top:20px; transform:translateX(-50%); z-index:9999; background:rgba(20,24,32,.95); color:#eef3fa; border:1px solid rgba(255,255,255,.2); border-radius:12px; padding:9px 18px; font-size:12px; opacity:0; transition:opacity .25s; pointer-events:none; }
   #toast.show { opacity:1; }
+  #notifyBtn.flash { background:#a33; border-color:#e66; color:#fff; animation:notifyBlink .8s steps(2,end) infinite; }
+  @keyframes notifyBlink { 0%,100%{background:#a33} 50%{background:#3a1515} }
   @media (max-width: 900px), (pointer: coarse) {
     #head { padding:10px 14px; }
     #head h1 { font-size:18px; }
@@ -328,6 +330,7 @@
   <button id="tFontA">字号 +</button>
   <button id="tFontB">字号 −</button>
   <button id="tHelp">命令</button>
+  <button id="notifyBtn">提醒：开</button>
 </div>
 <div id="toast"></div>
 <div id="namebar">
@@ -385,6 +388,130 @@ function toast(msg){
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 1800);
 }
+
+let notifyOn = localStorage.getItem('xic_notify') !== '0';
+let audioCtx = null;
+let lastSoundAt = 0;
+let alertCount = 0;
+let alertTimer = null;
+const baseTitle = document.title;
+const notifyBtn = document.getElementById('notifyBtn');
+
+function unlockAudio(){
+  if(audioCtx) { if(audioCtx.state === 'suspended') audioCtx.resume(); return; }
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ audioCtx = null; }
+}
+['pointerdown','keydown','touchstart'].forEach(ev => document.addEventListener(ev, unlockAudio, { once:true, passive:true }));
+
+function playDing(){
+  if(!notifyOn) return;
+  const now = Date.now();
+  if(now - lastSoundAt < 900) return;
+  lastSoundAt = now;
+  if(!audioCtx) return;
+  try {
+    const t = audioCtx.currentTime;
+    const notes = [880, 1320];
+    notes.forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0, t + i * 0.11);
+      g.gain.linearRampToValueAtTime(0.16, t + i * 0.11 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.11 + 0.32);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t + i * 0.11); o.stop(t + i * 0.11 + 0.34);
+    });
+  } catch(e){}
+}
+
+function makeFavicon(color){
+  const c = document.createElement('canvas');
+  c.width = 32; c.height = 32;
+  const x = c.getContext('2d');
+  x.fillStyle = color;
+  x.beginPath(); x.arc(16,16,15,0,Math.PI*2); x.fill();
+  x.fillStyle = '#fff';
+  x.font = 'bold 22px sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('x', 16, 17);
+  return c.toDataURL('image/png');
+}
+const favBase = makeFavicon('#4aa8ff');
+const favRed = makeFavicon('#e03333');
+let favLink = document.querySelector('link[rel="icon"]');
+if(!favLink){ favLink = document.createElement('link'); favLink.rel = 'icon'; document.head.appendChild(favLink); }
+favLink.href = favBase;
+
+function setAlertVisual(on){
+  if(on){
+    favLink.href = favRed;
+    document.title = '(!) 新消息 · ' + baseTitle;
+    notifyBtn.classList.add('flash');
+  } else {
+    favLink.href = favBase;
+    document.title = baseTitle;
+    notifyBtn.classList.remove('flash');
+  }
+}
+
+function startAlertBlink(){
+  if(alertTimer) return;
+  let red = true;
+  notifyBtn.classList.add('flash');
+  alertTimer = setInterval(() => {
+    red = !red;
+    favLink.href = red ? favRed : favBase;
+    document.title = red ? '(!) 新消息 · ' + baseTitle : baseTitle;
+  }, 700);
+}
+function stopAlertBlink(){
+  if(alertTimer){ clearInterval(alertTimer); alertTimer = null; }
+  notifyBtn.classList.remove('flash');
+  setAlertVisual(false);
+}
+
+function sendSystemNotification(m){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const body = m.type === 'media' ? '[媒体] ' + (m.name || '') : String(m.text || '').slice(0, 120);
+    new Notification('xic · ' + m.from, { body, silent:true, tag:'xic-msg', renotify:true });
+  } catch(e){}
+}
+
+function onIncomingAlert(m){
+  if(!notifyOn) return;
+  if(m.dev && m.dev === deviceId) return;
+  if(m.from && m.from === nick) return;
+  playDing();
+  const active = !document.hidden && document.hasFocus();
+  if(!active){
+    alertCount++;
+    startAlertBlink();
+    sendSystemNotification(m);
+  }
+}
+
+function resetAlert(){
+  alertCount = 0;
+  stopAlertBlink();
+}
+
+function renderNotifyBtn(){ notifyBtn.textContent = '提醒：' + (notifyOn ? '开' : '关'); }
+notifyBtn.onclick = () => {
+  notifyOn = !notifyOn;
+  localStorage.setItem('xic_notify', notifyOn ? '1' : '0');
+  renderNotifyBtn();
+  if(!notifyOn) resetAlert();
+  else if('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(()=>{});
+  toast(notifyOn ? '提醒已开启' : '提醒已关闭');
+};
+renderNotifyBtn();
+
+document.addEventListener('visibilitychange', () => { if(!document.hidden) resetAlert(); });
+window.addEventListener('focus', resetAlert);
+
 function add(div, pop){ if(pop && (div.classList.contains('msg') || div.classList.contains('sys'))) div.classList.add('pop'); box.appendChild(div); scrollDecision(div); }
 function div(cls, html){ const x=document.createElement('div'); x.className=cls; x.innerHTML=html; return x; }
 
@@ -865,7 +992,10 @@ function handleIncoming(topic, payload){
     return;
   }
   render(m, true);
-  if(m.type === 'msg' || m.type === 'media'){ history.push(m); saveHistory(); }
+  if(m.type === 'msg' || m.type === 'media'){
+    history.push(m); saveHistory();
+    onIncomingAlert(m);
+  }
 }
 
 function renderOnline(){
